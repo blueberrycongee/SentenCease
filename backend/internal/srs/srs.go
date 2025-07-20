@@ -29,7 +29,15 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 	row := db.QueryRow(ctx, query, userID, time.Now())
 
 	var meaning models.Meaning
-	err := row.Scan(&meaning.ID, &meaning.WordID, &meaning.PartOfSpeech, &meaning.Definition, &meaning.ExampleSentence, &meaning.ExampleSentenceTranslation, &meaning.Lemma)
+	err := row.Scan(
+		&meaning.ID,
+		&meaning.WordID,
+		&meaning.PartOfSpeech,
+		&meaning.Definition,
+		&meaning.ExampleSentence,
+		&meaning.ExampleSentenceTranslation,
+		&meaning.Lemma,
+	)
 
 	if err == nil {
 		// Found a word to review
@@ -53,7 +61,15 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 		LIMIT 1;`
 
 	rowNew := db.QueryRow(ctx, queryNew, userID)
-	errNew := rowNew.Scan(&meaning.ID, &meaning.WordID, &meaning.PartOfSpeech, &meaning.Definition, &meaning.ExampleSentence, &meaning.ExampleSentenceTranslation, &meaning.Lemma)
+	errNew := rowNew.Scan(
+		&meaning.ID,
+		&meaning.WordID,
+		&meaning.PartOfSpeech,
+		&meaning.Definition,
+		&meaning.ExampleSentence,
+		&meaning.ExampleSentenceTranslation,
+		&meaning.Lemma,
+	)
 
 	if errors.Is(errNew, pgx.ErrNoRows) {
 		// No new words available, and nothing to review.

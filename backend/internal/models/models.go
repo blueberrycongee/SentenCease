@@ -21,17 +21,16 @@ type Word struct {
 // Meaning represents a single definition and example for a word.
 // It corresponds to the `meanings` table.
 type Meaning struct {
-	ID                         int    `json:"meaningId"`
-	WordID                     int    `json:"-"`
-	PartOfSpeech               string `json:"partOfSpeech,omitempty"`
-	Definition                 string `json:"definition"`
-	ExampleSentence            string `json:"exampleSentence"`
-	ExampleSentenceTranslation string `json:"exampleSentenceTranslation,omitempty"`
-	// Lemma is populated from a JOIN query with the words table.
-	Lemma string `json:"lemma,omitempty"`
+	ID                         int     `json:"meaningId"`
+	WordID                     int     `json:"wordId"`
+	Lemma                      string  `json:"lemma"`
+	PartOfSpeech               string  `json:"partOfSpeech"`
+	Definition                 string  `json:"definition"`
+	ExampleSentence            string  `json:"exampleSentence"`
+	ExampleSentenceTranslation *string `json:"exampleSentenceTranslation,omitempty"`
 }
 
-// UserProgress represents a user's learning progress on a specific meaning.
+// UserProgress represents the learning progress of a user for a specific meaning.
 type UserProgress struct {
 	UserID         string    `json:"-"`
 	MeaningID      int       `json:"-"`

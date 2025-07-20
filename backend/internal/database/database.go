@@ -2,11 +2,15 @@ package database
 
 import (
 	"context"
+	"errors"
 	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// ErrNotFound is a standard error for when a requested item is not found in the database.
+var ErrNotFound = errors.New("not found")
 
 // Connect establishes a connection pool to the PostgreSQL database and verifies it.
 func Connect(databaseURL string) (*pgxpool.Pool, error) {

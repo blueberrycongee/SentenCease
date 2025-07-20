@@ -26,16 +26,53 @@ func GenerateJWT(userID string, secretKey string) (string, error) {
 		return "", errors.New("JWT secret key is not provided")
 	}
 
-	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": userID,
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(time.Hour * 24 * 7).Unix(), // Token expires in 7 days
-	})
+	claims := &Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID,
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 7)), // Token expires in 7 days
+		},
+	}
 
-	tokenString, err := claims.SignedString([]byte(secretKey))
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	tokenString, err := token.SignedString([]byte(secretKey))
 	if err != nil {
 		return "", err
 	}
 
 	return tokenString, nil
+}
+
+// Claims defines the structure for JWT claims.
+type Claims struct {
+	jwt.RegisteredClaims
+}
+
+// ValidateJWT parses and validates a JWT token string.
+// If the token is valid, it returns the claims.
+func ValidateJWT(tokenString string, secretKey string) (*Claims, error) {
+	if secretKey == "" {
+		return nil, errors.New("JWT secret key is not provided")
+	}
+
+	claims := &Claims{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		// Ensure the signing method is what we expect
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
+		return []byte(secretKey), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+
+	return claims, nil
 }

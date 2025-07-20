@@ -3,8 +3,6 @@ package config
 import (
 	"log"
 	"os"
-
-	"github.com/joho/godotenv"
 )
 
 // Config holds all configuration for the application.
@@ -13,15 +11,8 @@ type Config struct {
 	JWTSecretKey string
 }
 
-// Load loads configuration from .env file or environment variables.
+// Load loads configuration from environment variables.
 func Load() (*Config, error) {
-	// Load .env file from the root, not from the current package directory
-	err := godotenv.Load("../.env")
-	if err != nil {
-		// It's okay if .env file doesn't exist, we can rely on environment variables
-		log.Println("No .env file found, reading from environment variables")
-	}
-
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		log.Fatal("DATABASE_URL environment variable is not set")

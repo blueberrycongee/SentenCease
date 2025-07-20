@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // User represents a user in the system.
 // Note: Password field is for binding request data and is not stored in the database.
 // PasswordHash is what's stored in the database.
@@ -8,4 +10,38 @@ type User struct {
 	Email        string `json:"email" binding:"required,email"`
 	Password     string `json:"password,omitempty" binding:"required,min=8"`
 	PasswordHash string `json:"-"` // Do not expose hash in JSON responses
+}
+
+// Word represents a word lemma.
+type Word struct {
+	ID    int    `json:"id"`
+	Lemma string `json:"lemma" binding:"required"`
+}
+
+// Meaning represents a single definition and example for a word.
+// It corresponds to the `meanings` table.
+type Meaning struct {
+	ID                         int    `json:"meaningId"`
+	WordID                     int    `json:"-"`
+	PartOfSpeech               string `json:"partOfSpeech,omitempty"`
+	Definition                 string `json:"definition"`
+	ExampleSentence            string `json:"exampleSentence"`
+	ExampleSentenceTranslation string `json:"exampleSentenceTranslation,omitempty"`
+	// Lemma is populated from a JOIN query with the words table.
+	Lemma string `json:"lemma,omitempty"`
+}
+
+// UserProgress represents a user's learning progress on a specific meaning.
+type UserProgress struct {
+	UserID         string    `json:"-"`
+	MeaningID      int       `json:"-"`
+	SRSStage       int       `json:"srsStage"`
+	LastReviewedAt time.Time `json:"lastReviewedAt,omitempty"`
+	NextReviewAt   time.Time `json:"nextReviewAt"`
+}
+
+// ReviewRequest is the structure for binding the request body of the POST /learn/review endpoint.
+type ReviewRequest struct {
+	MeaningID  int    `json:"meaningId" binding:"required"`
+	UserChoice string `json:"userChoice" binding:"required,oneof=认识 模糊 不认识"`
 }

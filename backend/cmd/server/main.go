@@ -31,12 +31,22 @@ func main() {
 	apiHandler := api.New(dbPool, cfg.JWTSecretKey)
 
 	// Setup routes
+	router.GET("/", apiHandler.RootHandler)
 	v1 := router.Group("/api/v1")
 	{
+		// Public routes for authentication
 		authRoutes := v1.Group("/auth")
 		{
 			authRoutes.POST("/register", apiHandler.Register)
 			authRoutes.POST("/login", apiHandler.Login)
+		}
+
+		// Protected routes for learning
+		learnRoutes := v1.Group("/learn")
+		learnRoutes.Use(api.AuthMiddleware(cfg.JWTSecretKey))
+		{
+			learnRoutes.GET("/next", apiHandler.GetNextWord)
+			learnRoutes.POST("/review", apiHandler.ReviewWord)
 		}
 	}
 

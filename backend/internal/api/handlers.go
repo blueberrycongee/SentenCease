@@ -5,10 +5,14 @@ import (
 	"log"
 	"net/http"
 
+	"errors"
 	"sentencease/backend/internal/auth"
+	"sentencease/backend/internal/database"
 	"sentencease/backend/internal/models"
+	"sentencease/backend/internal/srs"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -80,4 +84,67 @@ func (a *API) Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"token": token})
+}
+
+// GetNextWord fetches the next word for the user to learn or review.
+func (a *API) GetNextWord(c *gin.Context) {
+	userIDStr, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+
+	meaning, err := srs.GetNextWordForReview(c.Request.Context(), a.DB, userID)
+	if err != nil {
+		if errors.Is(err, database.ErrNotFound) {
+			c.JSON(http.StatusOK, gin.H{"message": "Congratulations! You have learned all available words."})
+			return
+		}
+		log.Printf("Error getting next word for user %s: %v", userID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get next word"})
+		return
+	}
+
+	c.JSON(http.StatusOK, meaning)
+}
+
+// ReviewWord updates the user's progress on a word.
+func (a *API) ReviewWord(c *gin.Context) {
+	userIDStr, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+		return
+	}
+
+	userID, err := uuid.Parse(userIDStr.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+		return
+	}
+
+	var req models.ReviewRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	err = srs.UpdateProgress(c.Request.Context(), a.DB, userID, req.MeaningID, req.UserChoice)
+	if err != nil {
+		log.Printf("Error updating progress for user %s on meaning %d: %v", userID, req.MeaningID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update progress"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Progress updated successfully"})
+}
+
+// RootHandler provides a welcome message for the API root.
+func (a *API) RootHandler(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{"message": "Welcome to the Sentencease API"})
 }

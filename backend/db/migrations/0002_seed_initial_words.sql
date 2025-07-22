@@ -2,7 +2,11 @@
 INSERT INTO words (lemma) VALUES
 ('run'),
 ('set'),
-('go');
+('go'),
+('context'),
+('vocabulary'),
+('learn'),
+('sentence');
 
 -- Seed meanings table
 INSERT INTO meanings (word_id, part_of_speech, definition, example_sentence, example_sentence_translation) VALUES

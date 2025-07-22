@@ -16,14 +16,20 @@ import (
 // GetNextWordForReview finds the next meaning for a user to review.
 // It prioritizes words that are due for review. If no words are due, it returns a new, never-seen word.
 func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (*models.Meaning, error) {
-	// First, try to find a meaning that is due for review.
+	// This single query handles both cases:
+	// 1. Finds a meaning that is due for review (up.next_review_at <= NOW()).
+	// 2. If no words are due, it finds a new, never-seen word (up.user_id IS NULL).
+	// The LEFT JOIN is crucial. It includes all meanings, and the WHERE clause filters them.
+	// For a new user, user_progress records don't exist, so `up.user_id IS NULL` finds a new word.
+	// `ORDER BY` prioritizes due reviews, then picks a random new word.
 	query := `
 		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
 		FROM meanings m
 		JOIN words w ON m.word_id = w.id
-		JOIN user_progress up ON m.id = up.meaning_id
-		WHERE up.user_id = $1 AND up.next_review_at <= $2
-		ORDER BY up.next_review_at
+		LEFT JOIN user_progress up ON m.id = up.meaning_id AND up.user_id = $1
+		WHERE (up.user_id = $1 AND up.next_review_at <= $2)
+		   OR (up.user_id IS NULL)
+		ORDER BY up.next_review_at ASC NULLS LAST, random()
 		LIMIT 1;`
 
 	row := db.QueryRow(ctx, query, userID, time.Now())
@@ -39,44 +45,16 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 		&meaning.Lemma,
 	)
 
-	if err == nil {
-		// Found a word to review
-		return &meaning, nil
-	}
-
-	if !errors.Is(err, pgx.ErrNoRows) {
-		// A real database error occurred
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			// This now correctly means the user has learned all words.
+			return nil, database.ErrNotFound
+		}
+		// A real database error occurred.
 		return nil, err
 	}
 
-	// If no words are due for review, find a new word that the user has never seen.
-	queryNew := `
-		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
-		FROM meanings m
-		JOIN words w ON m.word_id = w.id
-		WHERE NOT EXISTS (
-			SELECT 1 FROM user_progress up WHERE up.user_id = $1 AND up.meaning_id = m.id
-		)
-		ORDER BY random()
-		LIMIT 1;`
-
-	rowNew := db.QueryRow(ctx, queryNew, userID)
-	errNew := rowNew.Scan(
-		&meaning.ID,
-		&meaning.WordID,
-		&meaning.PartOfSpeech,
-		&meaning.Definition,
-		&meaning.ExampleSentence,
-		&meaning.ExampleSentenceTranslation,
-		&meaning.Lemma,
-	)
-
-	if errors.Is(errNew, pgx.ErrNoRows) {
-		// No new words available, and nothing to review.
-		return nil, database.ErrNotFound
-	}
-
-	return &meaning, errNew
+	return &meaning, nil
 }
 
 // UpdateProgress updates a user's progress for a specific meaning based on their self-assessment.

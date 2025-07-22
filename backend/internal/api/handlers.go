@@ -103,7 +103,7 @@ func (a *API) GetNextWord(c *gin.Context) {
 	meaning, err := srs.GetNextWordForReview(c.Request.Context(), a.DB, userID)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
-			c.JSON(http.StatusOK, gin.H{"message": "Congratulations! You have learned all available words."})
+			c.JSON(http.StatusNotFound, gin.H{"message": "Congratulations! You have learned all available words."})
 			return
 		}
 		log.Printf("Error getting next word for user %s: %v", userID, err)

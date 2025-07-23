@@ -17,6 +17,21 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('请求拦截器错误:', error);
+    return Promise.reject(error);
+  }
+);
+
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    console.error('API请求错误:', error);
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误数据:', error.response.data);
+    }
     return Promise.reject(error);
   }
 );

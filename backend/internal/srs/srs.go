@@ -3,12 +3,14 @@ package srs
 import (
 	"context"
 	"errors"
+	"log"
 	"math"
 	"regexp"
 	"sentencease/backend/internal/database"
 	"sentencease/backend/internal/models"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -62,7 +64,27 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 		return nil, err
 	}
 
+	log.Printf("Retrieved meaning: ID=%d, WordID=%d, PartOfSpeech=%s, Definition=%s, Lemma=%s",
+		m.ID, m.WordID, m.PartOfSpeech, m.Definition, m.Lemma)
+
 	wordInSentence := findWordInSentence(m.ExampleSentence, m.Lemma)
+
+	// 检查词性是否为空或不是中文，如果是则尝试修复
+	if m.PartOfSpeech == "" || !containsChineseCharacters(m.PartOfSpeech) {
+		// 尝试从定义中提取词性
+		pos := extractPartOfSpeech(m.Definition)
+		if pos != "" {
+			m.PartOfSpeech = pos
+		} else {
+			// 如果无法提取，使用默认词性
+			m.PartOfSpeech = "未知"
+		}
+	}
+
+	// 检查定义是否为英文而不是中文，如果是则尝试将其标记为需要修复
+	if !containsChineseCharacters(m.Definition) {
+		m.Definition = "[需要翻译] " + m.Definition
+	}
 
 	reviewMeaning := &models.MeaningForReview{
 		MeaningID:                  m.ID,
@@ -79,11 +101,15 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 
 // UpdateProgress updates a user's progress for a specific meaning based on their self-assessment.
 func UpdateProgress(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, meaningID int, userChoice string) error {
+	// 记录所有操作，帮助调试
+	log.Printf("Updating progress for user %s on meaning %d with choice: %s", userID, meaningID, userChoice)
+
 	tx, err := db.Begin(ctx)
 	if err != nil {
+		log.Printf("Error beginning transaction: %v", err)
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer tx.Rollback(ctx) // 始终尝试回滚，如果事务已提交则无效
 
 	// Get current progress
 	var progress models.UserProgress
@@ -93,18 +119,24 @@ func UpdateProgress(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, mea
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// This is a new word for the user, so create initial progress record.
+			log.Printf("No existing progress found for user %s and meaning %d. Starting at stage 0.", userID, meaningID)
 			progress.SRSStage = 0 // Start at stage 0
 		} else {
+			log.Printf("Error querying current progress: %v", err)
 			return err
 		}
+	} else {
+		log.Printf("Found existing progress for user %s and meaning %d: stage %d", userID, meaningID, progress.SRSStage)
 	}
 
 	// Calculate new SRS stage
 	newStage := calculateNextStage(progress.SRSStage, userChoice)
+	log.Printf("Calculated new SRS stage: %d (from %d)", newStage, progress.SRSStage)
 
 	// Calculate next review interval
 	nextInterval := calculateNextInterval(newStage)
 	nextReviewAt := time.Now().Add(nextInterval)
+	log.Printf("Next review scheduled at: %v (in %v)", nextReviewAt, nextInterval)
 
 	// Upsert progress
 	upsertQuery := `
@@ -117,10 +149,18 @@ func UpdateProgress(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, mea
 
 	_, err = tx.Exec(ctx, upsertQuery, userID, meaningID, newStage, time.Now(), nextReviewAt)
 	if err != nil {
+		log.Printf("Error upserting progress: %v", err)
 		return err
 	}
 
-	return tx.Commit(ctx)
+	err = tx.Commit(ctx)
+	if err != nil {
+		log.Printf("Error committing transaction: %v", err)
+		return err
+	}
+
+	log.Printf("Progress successfully updated for user %s on meaning %d", userID, meaningID)
+	return nil
 }
 
 // calculateNextStage determines the new SRS stage based on the current stage and user's choice.
@@ -173,4 +213,42 @@ func findWordInSentence(sentence, lemma string) string {
 	// 3. As a last resort, if no variations are found, return the original lemma.
 	// The frontend will try its best, but might not highlight anything.
 	return lemma
+}
+
+// containsChineseCharacters 检查字符串是否包含中文字符
+func containsChineseCharacters(s string) bool {
+	for _, r := range s {
+		if unicode.Is(unicode.Han, r) {
+			return true
+		}
+	}
+	return false
+}
+
+// extractPartOfSpeech 尝试从定义中提取词性
+func extractPartOfSpeech(definition string) string {
+	// 常见英文词性及其中文对应
+	posMap := map[string]string{
+		"n.":      "名词",
+		"v.":      "动词",
+		"vt.":     "及物动词",
+		"vi.":     "不及物动词",
+		"adj.":    "形容词",
+		"adv.":    "副词",
+		"prep.":   "介词",
+		"conj.":   "连词",
+		"interj.": "感叹词",
+		"pron.":   "代词",
+		"num.":    "数词",
+		"art.":    "冠词",
+	}
+
+	// 检查定义是否以常见词性标记开头
+	for eng, chn := range posMap {
+		if strings.HasPrefix(definition, eng) {
+			return chn
+		}
+	}
+
+	return ""
 }

@@ -120,29 +120,53 @@ func (a *API) GetNextWord(c *gin.Context) {
 func (a *API) ReviewWord(c *gin.Context) {
 	userIDClaim, exists := c.Get("userID")
 	if !exists {
+		log.Printf("ReviewWord: User ID not found in token")
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
 		return
 	}
 
 	userID, ok := userIDClaim.(uuid.UUID)
 	if !ok {
+		log.Printf("ReviewWord: Invalid user ID format in token")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format in token"})
 		return
 	}
 
 	var req models.ReviewRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		log.Printf("ReviewWord: Invalid request body: %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
 		return
 	}
 
-	err := srs.UpdateProgress(c.Request.Context(), a.DB, userID, req.MeaningID, req.UserChoice)
+	log.Printf("ReviewWord: Processing review for user %s on meaning %d with choice %s",
+		userID, req.MeaningID, req.UserChoice)
+
+	// 验证meaningID是否存在
+	var meaningExists bool
+	checkQuery := `SELECT EXISTS(SELECT 1 FROM meanings WHERE id = $1)`
+	err := a.DB.QueryRow(c.Request.Context(), checkQuery, req.MeaningID).Scan(&meaningExists)
 	if err != nil {
-		log.Printf("Error updating progress for user %s on meaning %d: %v", userID, req.MeaningID, err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update progress"})
+		log.Printf("ReviewWord: Error checking meaning existence: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to validate meaning ID"})
+		return
+	}
+	if !meaningExists {
+		log.Printf("ReviewWord: Meaning ID %d does not exist", req.MeaningID)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid meaning ID: not found"})
 		return
 	}
 
+	err = srs.UpdateProgress(c.Request.Context(), a.DB, userID, req.MeaningID, req.UserChoice)
+	if err != nil {
+		log.Printf("ReviewWord: Error updating progress for user %s on meaning %d: %v",
+			userID, req.MeaningID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update progress: " + err.Error()})
+		return
+	}
+
+	log.Printf("ReviewWord: Successfully updated progress for user %s on meaning %d",
+		userID, req.MeaningID)
 	c.JSON(http.StatusOK, gin.H{"message": "Progress updated successfully"})
 }
 
@@ -175,4 +199,36 @@ func (a *API) GetVocabSources(c *gin.Context) {
 // RootHandler provides a welcome message for the API root.
 func (a *API) RootHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Welcome to the Sentencease API"})
+}
+
+// GetWordDetails fetches a specific meaning by ID for debugging purposes.
+func (a *API) GetWordDetails(c *gin.Context) {
+	meaningID := c.Param("id")
+	if meaningID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Meaning ID is required"})
+		return
+	}
+
+	var meaning models.Meaning
+	query := `
+		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
+		FROM meanings m
+		JOIN words w ON m.word_id = w.id
+		WHERE m.id = $1
+	`
+	err := a.DB.QueryRow(c.Request.Context(), query, meaningID).Scan(
+		&meaning.ID,
+		&meaning.WordID,
+		&meaning.PartOfSpeech,
+		&meaning.Definition,
+		&meaning.ExampleSentence,
+		&meaning.ExampleSentenceTranslation,
+		&meaning.Lemma,
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get word details: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, meaning)
 }

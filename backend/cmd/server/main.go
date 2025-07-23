@@ -60,6 +60,12 @@ func main() {
 			authRequired.POST("/learn/review", apiHandler.ReviewWord)
 			authRequired.GET("/vocab-sources", apiHandler.GetVocabSources)
 		}
+
+		// Debug routes - remove in production
+		debugRoutes := v1.Group("/debug")
+		{
+			debugRoutes.GET("/word/:id", apiHandler.GetWordDetails)
+		}
 	}
 
 	// Start server

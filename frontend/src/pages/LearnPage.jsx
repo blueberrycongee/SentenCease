@@ -10,6 +10,7 @@ const LearnPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRevealed, setIsRevealed] = useState(false);
   const [isInteractable, setIsInteractable] = useState(false);
+  const [debugInfo, setDebugInfo] = useState(null);
 
   const fetchNextWord = useCallback(async () => {
     setIsRevealed(false);
@@ -18,8 +19,12 @@ const LearnPage = () => {
     setError('');
     try {
       const response = await api.get('/learn/next');
+      console.log('API 响应:', response.data);
       setMeaning(response.data);
+      // 保存调试信息
+      setDebugInfo(response.data);
     } catch (err) {
+      console.error('获取单词失败:', err);
       setError(err.response?.data?.error || '无法获取下一个词汇。');
     } finally {
       setLoading(false);
@@ -44,13 +49,20 @@ const LearnPage = () => {
     if (!meaning || !meaning.meaningId) return;
     setIsSubmitting(true);
     try {
+      console.log('提交复习请求:', {
+        meaningId: meaning.meaningId,
+        userChoice,
+      });
+      
       await api.post('/learn/review', {
         meaningId: meaning.meaningId,
         userChoice,
       });
       fetchNextWord();
     } catch (err) {
-      setError(err.response?.data?.error || '提交复习记录失败。');
+      console.error('提交复习记录失败:', err);
+      const errorMessage = err.response?.data?.error || '提交复习记录失败。';
+      setError(`${errorMessage} (错误详情: ${err.message})`);
       setIsSubmitting(false);
     }
   };
@@ -88,6 +100,11 @@ const LearnPage = () => {
         <Button onClick={fetchNextWord} variant="primary" className="mt-6 max-w-xs mx-auto">
           再试一次
         </Button>
+        {debugInfo && (
+          <div className="mt-4 p-4 bg-gray-900 text-left text-xs overflow-auto rounded">
+            <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+          </div>
+        )}
       </div>
     );
   }
@@ -108,6 +125,22 @@ const LearnPage = () => {
       </div>
     );
   }
+
+  // 显示词性和中文释义的格式化函数
+  const formatPartOfSpeechAndDefinition = () => {
+    if (!meaning) return '';
+    
+    // 确保这些属性存在
+    const partOfSpeech = meaning.partOfSpeech || '';
+    const definition = meaning.definition || '';
+    
+    // 如果都有，显示"词性: 释义"
+    if (partOfSpeech && definition) {
+      return `${partOfSpeech}: ${definition}`;
+    }
+    // 否则只显示有的那个
+    return partOfSpeech || definition;
+  };
 
   return (
     <div 
@@ -138,7 +171,7 @@ const LearnPage = () => {
           onClick={(e) => e.stopPropagation()}
         >
           <div className="mb-10 min-h-[3rem] flex items-center justify-center">
-            <p className="text-xl text-gray-300">{meaning.definition}</p>
+            <p className="text-xl text-gray-300">{formatPartOfSpeechAndDefinition()}</p>
           </div>
 
           <div className="flex justify-center gap-4">
@@ -153,6 +186,18 @@ const LearnPage = () => {
             </Button>
           </div>
         </div>
+        
+        {/* 调试信息区域 */}
+        {import.meta.env.DEV && meaning && (
+          <div className="mt-8 border-t border-gray-700 pt-4 text-xs text-left">
+            <details>
+              <summary className="cursor-pointer text-gray-500">调试信息</summary>
+              <div className="mt-2 p-2 bg-gray-900 rounded overflow-auto">
+                <pre className="text-gray-400">{JSON.stringify(meaning, null, 2)}</pre>
+              </div>
+            </details>
+          </div>
+        )}
       </div>
     </div>
   );

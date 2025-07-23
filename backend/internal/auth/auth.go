@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,14 +22,14 @@ func CheckPasswordHash(password, hash string) bool {
 }
 
 // GenerateJWT creates a new JWT for a given user ID.
-func GenerateJWT(userID string, secretKey string) (string, error) {
+func GenerateJWT(userID uuid.UUID, secretKey string) (string, error) {
 	if secretKey == "" {
 		return "", errors.New("JWT secret key is not provided")
 	}
 
 	claims := &Claims{
+		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24 * 7)), // Token expires in 7 days
 		},
@@ -46,6 +47,7 @@ func GenerateJWT(userID string, secretKey string) (string, error) {
 
 // Claims defines the structure for JWT claims.
 type Claims struct {
+	UserID uuid.UUID `json:"userID"`
 	jwt.RegisteredClaims
 }
 

@@ -88,15 +88,15 @@ func (a *API) Login(c *gin.Context) {
 
 // GetNextWord fetches the next word for the user to learn or review.
 func (a *API) GetNextWord(c *gin.Context) {
-	userIDStr, exists := c.Get("userID")
+	userIDClaim, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userID, ok := userIDClaim.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format in token"})
 		return
 	}
 
@@ -116,15 +116,15 @@ func (a *API) GetNextWord(c *gin.Context) {
 
 // ReviewWord updates the user's progress on a word.
 func (a *API) ReviewWord(c *gin.Context) {
-	userIDStr, exists := c.Get("userID")
+	userIDClaim, exists := c.Get("userID")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
 		return
 	}
 
-	userID, err := uuid.Parse(userIDStr.(string))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+	userID, ok := userIDClaim.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format in token"})
 		return
 	}
 
@@ -134,7 +134,7 @@ func (a *API) ReviewWord(c *gin.Context) {
 		return
 	}
 
-	err = srs.UpdateProgress(c.Request.Context(), a.DB, userID, req.MeaningID, req.UserChoice)
+	err := srs.UpdateProgress(c.Request.Context(), a.DB, userID, req.MeaningID, req.UserChoice)
 	if err != nil {
 		log.Printf("Error updating progress for user %s on meaning %d: %v", userID, req.MeaningID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update progress"})

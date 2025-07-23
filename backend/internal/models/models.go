@@ -1,15 +1,19 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // User represents a user in the system.
 // Note: Password field is for binding request data and is not stored in the database.
 // PasswordHash is what's stored in the database.
 type User struct {
-	ID           string `json:"id"`
-	Email        string `json:"email" binding:"required,email"`
-	Password     string `json:"password,omitempty" binding:"required,min=8"`
-	PasswordHash string `json:"-"` // Do not expose hash in JSON responses
+	ID           uuid.UUID `json:"id"`
+	Email        string    `json:"email" binding:"required,email"`
+	Password     string    `json:"password,omitempty" binding:"required,min=8"`
+	PasswordHash string    `json:"-"` // Do not expose hash in JSON responses
 }
 
 // Word represents a word lemma.
@@ -32,7 +36,7 @@ type Meaning struct {
 
 // UserProgress represents the learning progress of a user for a specific meaning.
 type UserProgress struct {
-	UserID         string    `json:"-"`
+	UserID         uuid.UUID `json:"-"`
 	MeaningID      int       `json:"-"`
 	SRSStage       int       `json:"srsStage"`
 	LastReviewedAt time.Time `json:"lastReviewedAt,omitempty"`

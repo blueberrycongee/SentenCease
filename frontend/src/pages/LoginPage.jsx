@@ -24,41 +24,40 @@ const LoginPage = () => {
       setToken(response.data.token);
       navigate('/learn');
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed. Please check your credentials.');
+      setError(err.response?.data?.error || '登录失败，请检查您的凭据。');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout title="Login to your Account">
+    <AuthLayout
+      title="登录您的账户"
+      linkTo="/register"
+      questionText="还没有账户？"
+      linkText="立即注册"
+    >
       <form onSubmit={handleSubmit} className="space-y-6">
+        <Input
+          id="email"
+          type="email"
+          placeholder="邮箱"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Input
+          id="password"
+          type="password"
+          placeholder="密码"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        {error && <p className="text-sm text-red-400 text-center">{error}</p>}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-morandi-text-primary">Email</label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="your@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-morandi-text-primary">Password</label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <div>
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+          <Button type="submit" disabled={loading} variant="primary">
+            {loading ? '登录中...' : '登录'}
           </Button>
         </div>
       </form>

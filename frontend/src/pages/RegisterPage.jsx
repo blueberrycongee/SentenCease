@@ -21,41 +21,40 @@ const RegisterPage = () => {
       await api.post('/auth/register', { email, password });
       navigate('/login');
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed. Please try again.');
+      setError(err.response?.data?.error || '注册失败，请稍后重试。');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout title="Create an Account">
+    <AuthLayout
+      title="创建新账户"
+      linkTo="/login"
+      questionText="已经有账户了？"
+      linkText="直接登录"
+    >
       <form onSubmit={handleSubmit} className="space-y-6">
+        <Input
+          id="email"
+          type="email"
+          placeholder="邮箱"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
+        <Input
+          id="password"
+          type="password"
+          placeholder="密码"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        {error && <p className="text-sm text-red-400 text-center">{error}</p>}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-morandi-text-primary">Email</label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="your@email.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-morandi-text-primary">Password</label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <div>
-          <Button type="submit" disabled={loading}>
-            {loading ? 'Registering...' : 'Register'}
+          <Button type="submit" disabled={loading} variant="primary">
+            {loading ? '注册中...' : '注册'}
           </Button>
         </div>
       </form>

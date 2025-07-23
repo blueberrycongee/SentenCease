@@ -40,7 +40,8 @@ const LearnPage = () => {
     }
   }, [isRevealed]);
 
-  const handleReview = async (userChoice) => {
+  // Submit review result; memoized to keep reference stable
+  const handleReview = useCallback(async (userChoice) => {
     if (!meaning || !meaning.meaningId || isSubmitting) return;
     setIsSubmitting(true);
     try {
@@ -53,7 +54,47 @@ const LearnPage = () => {
       setError(err.response?.data?.error || '提交复习记录失败。');
       setIsSubmitting(false);
     }
-  };
+  }, [meaning, isSubmitting, fetchNextWord]);
+
+  // Keyboard shortcuts: Space reveals; 1=认识, 2=模糊, 3=不认识
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // Ignore repeated key press
+      if (e.repeat) return;
+
+      // Ignore if focused on input/textarea to avoid conflict with typing
+      const tagName = document.activeElement?.tagName;
+      if (tagName === 'INPUT' || tagName === 'TEXTAREA') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault(); // Prevent page scroll
+        if (!isRevealed) {
+          setIsRevealed(true);
+        }
+        return;
+      }
+
+      // Only handle scoring keys after reveal and when buttons are interactable
+      if (!isRevealed || !isInteractable || isSubmitting) return;
+
+      switch (e.key) {
+        case '1':
+          handleReview('认识');
+          break;
+        case '2':
+          handleReview('模糊');
+          break;
+        case '3':
+          handleReview('不认识');
+          break;
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isRevealed, isInteractable, isSubmitting, handleReview]);
 
   const renderHighlightedSentence = (sentence, word) => {
     if (!sentence || !word) return word;
@@ -120,7 +161,7 @@ const LearnPage = () => {
 
     return (
       <div 
-        className="w-full max-w-xl mx-auto bg-white rounded-2xl shadow-xl flex flex-col justify-between p-10 md:p-16 min-h-[28rem] cursor-pointer transform -translate-y-5"
+        className="w-full max-w-xl mx-auto bg-white rounded-2xl shadow-xl flex flex-col justify-between p-10 md:p-16 min-h-[36rem] cursor-pointer transform -translate-y-5"
         onClick={() => !isRevealed && setIsRevealed(true)}
       >
         {/* Top Section: Sentence & Translation */}

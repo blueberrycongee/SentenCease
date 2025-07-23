@@ -1,6 +1,6 @@
 export default {
   plugins: {
-    '@tailwindcss/postcss': {},
+    // Only autoprefixer is needed; Tailwind is handled by the Vite plugin.
     autoprefixer: {},
   },
 } 

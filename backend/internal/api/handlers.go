@@ -12,6 +12,8 @@ import (
 	"sentencease/backend/internal/models"
 	"sentencease/backend/internal/srs"
 
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -245,6 +247,67 @@ func (a *API) GetWordsBySource(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, wordsByUnit)
+}
+
+func (a *API) GetWordsForSelection(c *gin.Context) {
+	source := c.Query("source")
+	order := c.Query("order")
+	countStr := c.Query("count")
+	count, err := strconv.Atoi(countStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid count parameter"})
+		return
+	}
+
+	if source == "" || order == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "source and order parameters are required"})
+		return
+	}
+
+	query := `
+        SELECT m.id, w.lemma, m.definition
+        FROM meanings m
+        JOIN words w ON m.word_id = w.id
+        WHERE w.source = $1
+    `
+
+	if order == "random" {
+		query += " ORDER BY random()"
+	} else {
+		query += " ORDER BY m.id" // or w.lemma, depending on desired sequential order
+	}
+
+	query += " LIMIT $2"
+
+	rows, err := a.DB.Query(c.Request.Context(), query, source, count)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query words for selection"})
+		return
+	}
+	defer rows.Close()
+
+	type WordForSelection struct {
+		ID         int    `json:"id"`
+		Lemma      string `json:"lemma"`
+		Definition string `json:"definition"`
+	}
+
+	var words []WordForSelection
+	for rows.Next() {
+		var word WordForSelection
+		if err := rows.Scan(&word.ID, &word.Lemma, &word.Definition); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan word for selection"})
+			return
+		}
+		words = append(words, word)
+	}
+
+	if err := rows.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error iterating words for selection"})
+		return
+	}
+
+	c.JSON(http.StatusOK, words)
 }
 
 func (a *API) CreateDailyPlan(c *gin.Context) {

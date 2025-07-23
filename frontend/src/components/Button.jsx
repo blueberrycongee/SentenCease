@@ -1,13 +1,13 @@
 import React from 'react';
 
 const Button = ({ children, onClick, type = 'button', disabled = false, variant = 'primary', className = '' }) => {
-  const baseClasses = 'px-6 py-3 font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseClasses = 'border rounded-lg px-7 py-3 font-medium text-base focus:outline-none transition-all duration-200 transform hover:-translate-y-0.5 shadow-sm active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants = {
-    primary: 'bg-slate-300 text-slate-800 hover:bg-slate-400/80 focus:ring-slate-400',
-    success: 'bg-emerald-200 text-emerald-900 hover:bg-emerald-300/80 focus:ring-emerald-400',
-    warning: 'bg-amber-200 text-amber-900 hover:bg-amber-300/80 focus:ring-amber-400',
-    danger: 'bg-rose-200 text-rose-900 hover:bg-rose-300/80 focus:ring-rose-400',
+    primary: 'bg-blue-600 text-white hover:bg-blue-700',
+    success: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100',   // 认识
+    warning: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100',       // 模糊
+    danger: 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100',            // 不认识
   };
 
   return (

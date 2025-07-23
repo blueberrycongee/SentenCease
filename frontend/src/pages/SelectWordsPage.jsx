@@ -8,6 +8,10 @@ const SelectWordsPage = () => {
     const [wordsByUnit, setWordsByUnit] = useState({});
     const [selectedWords, setSelectedWords] = useState(new Set());
     const [dailyGoal, setDailyGoal] = useState(20);
+    const [wordCount, setWordCount] = useState(10);
+    const [order, setOrder] = useState('sequential');
+    const [fetchedWords, setFetchedWords] = useState([]);
+
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -22,19 +26,26 @@ const SelectWordsPage = () => {
         fetchSources();
     }, []);
 
-    useEffect(() => {
-        if (selectedSource) {
-            const fetchWords = async () => {
-                try {
-                    const response = await api.get(`/vocab-sources/${selectedSource}/words`);
-                    setWordsByUnit(response.data);
-                } catch (error) {
-                    console.error(`Failed to fetch words for ${selectedSource}:`, error);
-                }
-            };
-            fetchWords();
+    const handleFetchWords = async () => {
+        if (!selectedSource) {
+            alert('Please select a vocabulary source first.');
+            return;
         }
-    }, [selectedSource]);
+        try {
+            const response = await api.get('/words/selection', {
+                params: {
+                    source: selectedSource,
+                    count: wordCount,
+                    order: order,
+                },
+            });
+            setFetchedWords(response.data);
+            // Reset selection when new words are fetched
+            setSelectedWords(new Set());
+        } catch (error) {
+            console.error('Failed to fetch words for selection:', error);
+        }
+    };
 
     const handleWordSelection = (wordId) => {
         setSelectedWords(prev => {
@@ -48,16 +59,16 @@ const SelectWordsPage = () => {
         });
     };
 
-    const handleSelectAllInUnit = (unit) => {
-        const unitWordIds = wordsByUnit[unit].map(w => w.id);
-        setSelectedWords(prev => {
-            const newSelection = new Set(prev);
-            unitWordIds.forEach(id => newSelection.add(id));
-            return newSelection;
-        });
+    const handleSelectAllFetched = () => {
+        const allWordIds = new Set(fetchedWords.map(w => w.id));
+        setSelectedWords(allWordIds);
     };
 
     const handleStartLearning = async () => {
+        if (selectedWords.size === 0) {
+            alert('Please select some words to learn.');
+            return;
+        }
         try {
             const meaningIds = Array.from(selectedWords);
             await api.post('/daily-plan', { meaning_ids: meaningIds });
@@ -77,7 +88,11 @@ const SelectWordsPage = () => {
                 <select
                     id="source-select"
                     value={selectedSource}
-                    onChange={(e) => setSelectedSource(e.target.value)}
+                    onChange={(e) => {
+                        setSelectedSource(e.target.value);
+                        setFetchedWords([]); // Clear fetched words when source changes
+                        setSelectedWords(new Set());
+                    }}
                     className="p-2 border rounded dark:bg-gray-700"
                 >
                     <option value="">-- 请选择 --</option>
@@ -87,48 +102,76 @@ const SelectWordsPage = () => {
                 </select>
             </div>
 
-            {/* Word List */}
-            {selectedSource && (
-                <div>
-                    <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-xl">单词列表 ({selectedWords.size} / {dailyGoal})</h2>
-                        <button
-                            onClick={handleStartLearning}
-                            disabled={selectedWords.size === 0}
-                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400"
-                        >
-                            开始学习
-                        </button>
+            {/* Custom selection controls */}
+            <div className="mb-4 p-4 border rounded dark:border-gray-600">
+                <h2 className="text-xl mb-2">自定义今日学习</h2>
+                <div className="flex items-center space-x-4">
+                    <div>
+                        <label htmlFor="word-count" className="block mb-1">单词数量:</label>
+                        <input
+                            type="number"
+                            id="word-count"
+                            value={wordCount}
+                            onChange={(e) => setWordCount(parseInt(e.target.value, 10))}
+                            className="p-2 border rounded dark:bg-gray-700 w-24"
+                        />
                     </div>
-
-                    {Object.entries(wordsByUnit).map(([unit, words]) => (
-                        <div key={unit} className="mb-4">
-                            <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t">
-                                <h3 className="font-bold">{unit}</h3>
-                                <button
-                                    onClick={() => handleSelectAllInUnit(unit)}
-                                    className="text-sm text-blue-500 hover:underline"
-                                >
-                                    全选
-                                </button>
-                            </div>
-                            <ul className="list-disc pl-5 p-2 border rounded-b">
-                                {words.map(word => (
-                                    <li key={word.id} className="flex items-center justify-between py-1">
-                                        <span>{word.lemma}</span>
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedWords.has(word.id)}
-                                            onChange={() => handleWordSelection(word.id)}
-                                            className="form-checkbox h-5 w-5 text-blue-600"
-                                        />
-                                    </li>
-                                ))}
-                            </ul>
+                    <div>
+                        <label className="block mb-1">选择方式:</label>
+                        <div className="flex space-x-2">
+                            <button onClick={() => setOrder('sequential')} className={`px-4 py-2 rounded ${order === 'sequential' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600'}`}>顺选</button>
+                            <button onClick={() => setOrder('random')} className={`px-4 py-2 rounded ${order === 'random' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600'}`}>随机选</button>
                         </div>
-                    ))}
+                    </div>
+                    <button onClick={handleFetchWords} className="self-end bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        获取单词
+                    </button>
                 </div>
-            )}
+            </div>
+
+            {/* Word List */}
+            <div>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl">单词列表 ({selectedWords.size} selected)</h2>
+                    <button
+                        onClick={handleStartLearning}
+                        disabled={selectedWords.size === 0}
+                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400"
+                    >
+                        开始学习
+                    </button>
+                </div>
+
+                {fetchedWords.length > 0 && (
+                     <div className="mb-4">
+                         <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t">
+                             <h3 className="font-bold">自定义选择</h3>
+                             <button
+                                 onClick={handleSelectAllFetched}
+                                 className="text-sm text-blue-500 hover:underline"
+                             >
+                                 全选
+                             </button>
+                         </div>
+                         <ul className="list-none p-2 border rounded-b dark:border-gray-600">
+                             {fetchedWords.map(word => (
+                                 <li key={word.id} className={`flex items-center justify-between py-2 px-3 rounded ${selectedWords.has(word.id) ? 'bg-blue-100 dark:bg-blue-900' : ''}`}>
+                                     <div>
+                                         <span className="font-semibold">{word.lemma}</span>
+                                         <p className="text-sm text-gray-500 dark:text-gray-400">{word.definition}</p>
+                                     </div>
+                                     <input
+                                         type="checkbox"
+                                         checked={selectedWords.has(word.id)}
+                                         onChange={() => handleWordSelection(word.id)}
+                                         className="form-checkbox h-5 w-5 text-blue-600 rounded dark:bg-gray-700 border-gray-300 dark:border-gray-500 focus:ring-blue-500"
+                                     />
+                                 </li>
+                             ))}
+                         </ul>
+                     </div>
+                )}
+            </div>
         </div>
     );
 };

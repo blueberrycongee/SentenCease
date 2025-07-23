@@ -12,7 +12,10 @@ export default {
         'morandi-text-primary': '#685c53',
         'morandi-text-secondary': '#867d75',
         'morandi-highlight': '#a49d98',
-      }
+      },
+      fontFamily: {
+        sans: ['"Noto Sans"', '"Noto Sans SC"', 'sans-serif'],
+      },
     },
   },
   plugins: [],

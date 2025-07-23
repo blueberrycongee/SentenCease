@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Learning Card (Single File)</title>
+    
+    <!-- 引入外部字体和图标库 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- 内嵌CSS样式 -->
+    <style>
+        /* --- 全局样式重置与基础设定 --- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Noto Sans', 'Noto Sans SC', sans-serif;
+            background-color: #f0f2f5; /* 使用柔和的浅灰色背景，增加质感 */
+            color: #333; /* 默认文字颜色使用深灰色，而非纯黑 */
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* --- 顶部导航栏样式 --- */
+        .top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background-color: #ffffff;
+            border-bottom: 1px solid #e0e0e0;
+            width: 100%;
+        }
+
+        .logo {
+            font-size: 22px;
+            font-weight: 700;
+            color: #0052cc; /* 品牌蓝色 */
+        }
+
+        .profile-icon {
+            font-size: 28px;
+            color: #888;
+        }
+
+        /* --- 主内容区域布局 --- */
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        /* --- 核心学习卡片样式 --- */
+        .learning-card {
+            background-color: #ffffff;
+            border-radius: 16px; /* 更大的圆角，更现代 */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* 更柔和、自然的阴影 */
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            text-align: center;
+            transform: translateY(-20px); /* 向上微移，使其成为视觉焦点 */
+        }
+
+        /* --- 例句区域样式 --- */
+        .sentence-block {
+            margin-bottom: 25px;
+        }
+
+        .sentence-en {
+            font-size: 22px;
+            line-height: 1.6;
+            color: #1d2129;
+            margin-bottom: 10px;
+        }
+
+        .sentence-en .highlight {
+            color: #0052cc; /* 使用品牌色高亮核心单词 */
+            font-weight: 700;
+        }
+
+        .sentence-zh {
+            font-size: 16px;
+            color: #86909c; /* 翻译使用浅灰色，降低视觉权重 */
+        }
+
+        /* --- 分割线样式 --- */
+        .divider {
+            border: none;
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 30px auto;
+            width: 80%;
+        }
+
+        /* --- 核心词汇区域样式 --- */
+        .vocab-focus {
+            margin-bottom: 35px;
+        }
+
+        .vocab-word {
+            font-size: 42px;
+            font-weight: 700;
+            color: #1d2129;
+            margin-bottom: 8px;
+        }
+
+        .vocab-definition {
+            font-size: 18px;
+            color: #4e5969;
+        }
+
+        /* --- 底部按钮组样式 --- */
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 15px; /* 设置按钮之间的间距 */
+        }
+
+        .btn {
+            border: none;
+            border-radius: 8px;
+            padding: 12px 28px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out; /* 为所有属性添加平滑过渡效果 */
+            border: 1px solid transparent;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px); /* 鼠标悬停时轻微上浮 */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-dont-know {
+            background-color: #ffeae6;
+            color: #d93025;
+            border-color: #f7dcd9;
+        }
+
+        .btn-blurry {
+            background-color: #e6f7ff;
+            color: #1890ff;
+            border-color: #d2eaff;
+        }
+
+        .btn-know {
+            background-color: #e6fffa;
+            color: #00875a;
+            border-color: #c3f4e8;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 顶部导航栏 -->
+    <header class="top-nav">
+        <div class="logo">句读</div>
+        <i class="fas fa-user-circle profile-icon"></i>
+    </header>
+
+    <!-- 主内容区域 -->
+    <main class="main-content">
+        <!-- 核心学习卡片 -->
+        <div class="learning-card">
+            
+            <div class="sentence-block">
+                <p class="sentence-en">The college has <strong class="highlight">revised</strong> its plans because of local objections.</p>
+                <p class="sentence-zh">由于地方上的反对，学院已经修改了计划。</p>
+            </div>
+
+            <hr class="divider">
+
+            <div class="vocab-focus">
+                <h2 class="vocab-word">revised</h2>
+                <p class="vocab-definition">修订; 校订</p>
+            </div>
+
+            <div class="action-buttons">
+                <button class="btn btn-dont-know">不认识</button>
+                <button class="btn btn-blurry">模糊</button>
+                <button class="btn btn-know">认识</button>
+            </div>
+
+        </div>
+    </main>
+
+</body>
+</html>

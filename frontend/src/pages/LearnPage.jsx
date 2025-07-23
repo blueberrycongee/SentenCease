@@ -57,9 +57,12 @@ const LearnPage = () => {
   
   const renderHighlightedSentence = (sentence, word) => {
     if (!sentence || !word) return word;
-    const parts = sentence.split(new RegExp(`(\\b${word}\\b)`, 'gi'));
+    // 使用 'i' 标志进行不区分大小写的匹配
+    const regex = new RegExp(`(\\b${word}\\b)`, 'gi');
+    const parts = sentence.split(regex);
+
     return parts.map((part, index) =>
-      part.toLowerCase() === word.toLowerCase() ? (
+      regex.test(part) ? (
         <strong key={index} className="font-bold text-teal-400">
           {part}
         </strong>
@@ -108,34 +111,44 @@ const LearnPage = () => {
 
   return (
     <div 
-      className="flex items-center justify-center w-full min-h-[calc(100vh-120px)] p-4"
+      className="flex items-center justify-center w-full min-h-[calc(100vh-120px)] p-4 cursor-pointer"
       onClick={() => !isRevealed && setIsRevealed(true)}
     >
       <div 
-        className="w-full max-w-2xl mx-auto bg-gray-800 rounded-2xl shadow-xl flex flex-col justify-around min-h-[24rem] p-8"
+        className="w-full max-w-2xl mx-auto bg-gray-800 rounded-2xl shadow-xl flex flex-col justify-center min-h-[24rem] p-8 text-center"
       >
-        <div className="flex items-center justify-center">
-          <p className="text-2xl sm:text-3xl text-gray-100 leading-relaxed text-center">
-            {renderHighlightedSentence(meaning.exampleSentence, meaning.word)}
-          </p>
+        <div className="flex-grow flex items-center justify-center">
+          <div>
+            <p className="text-2xl sm:text-3xl text-gray-100 leading-relaxed">
+              {renderHighlightedSentence(meaning.exampleSentence, meaning.word)}
+            </p>
+            {/* 为翻译预留空间的占位符 */}
+            <div className="min-h-[3rem] flex items-center justify-center mt-4">
+              {isRevealed && meaning.exampleSentenceTranslation && (
+                <p className="text-lg text-gray-400 transition-opacity duration-500 ease-in-out opacity-100">
+                  {meaning.exampleSentenceTranslation}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
         
         <div 
-          className={`transition-all duration-500 ease-in-out mt-4 ${isRevealed ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+          className={`transition-all duration-500 ease-in-out mt-8 ${isRevealed ? 'opacity-100 visible' : 'opacity-0 invisible h-0'}`}
           onClick={(e) => e.stopPropagation()}
         >
           <div className="mb-10 min-h-[3rem] flex items-center justify-center">
-            <p className="text-lg text-gray-400">{meaning.definition}</p>
+            <p className="text-xl text-gray-300">{meaning.definition}</p>
           </div>
 
           <div className="flex justify-center gap-4">
-            <Button onClick={(e) => { e.stopPropagation(); handleReview('不认识'); }} disabled={isSubmitting || !isInteractable} variant="danger">
+            <Button onClick={() => handleReview('不认识')} disabled={isSubmitting || !isInteractable} variant="danger">
               不认识
             </Button>
-            <Button onClick={(e) => { e.stopPropagation(); handleReview('模糊'); }} disabled={isSubmitting || !isInteractable} variant="warning">
+            <Button onClick={() => handleReview('模糊')} disabled={isSubmitting || !isInteractable} variant="warning">
               模糊
             </Button>
-            <Button onClick={(e) => { e.stopPropagation(); handleReview('认识'); }} disabled={isSubmitting || !isInteractable} variant="success">
+            <Button onClick={() => handleReview('认识')} disabled={isSubmitting || !isInteractable} variant="success">
               认识
             </Button>
           </div>

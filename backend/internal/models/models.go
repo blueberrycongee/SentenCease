@@ -18,8 +18,9 @@ type User struct {
 
 // Word represents a word lemma.
 type Word struct {
-	ID    int    `json:"id"`
-	Lemma string `json:"lemma" binding:"required"`
+	ID     int    `json:"id"`
+	Lemma  string `json:"lemma" binding:"required"`
+	Source string `json:"source,omitempty"`
 }
 
 // Meaning represents a single definition and example for a word.

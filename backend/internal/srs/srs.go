@@ -6,6 +6,7 @@ import (
 	"math"
 	"sentencease/backend/internal/database"
 	"sentencease/backend/internal/models"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -15,24 +16,30 @@ import (
 
 // GetNextWordForReview finds the next meaning for a user to review.
 // It prioritizes words that are due for review. If no words are due, it returns a new, never-seen word.
-func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (*models.Meaning, error) {
-	// This single query handles both cases:
-	// 1. Finds a meaning that is due for review (up.next_review_at <= NOW()).
-	// 2. If no words are due, it finds a new, never-seen word (up.user_id IS NULL).
-	// The LEFT JOIN is crucial. It includes all meanings, and the WHERE clause filters them.
-	// For a new user, user_progress records don't exist, so `up.user_id IS NULL` finds a new word.
-	// `ORDER BY` prioritizes due reviews, then picks a random new word.
+// If a source is provided, it filters words from that source.
+func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.Meaning, error) {
+	// Base query
 	query := `
 		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
 		FROM meanings m
 		JOIN words w ON m.word_id = w.id
 		LEFT JOIN user_progress up ON m.id = up.meaning_id AND up.user_id = $1
-		WHERE (up.user_id = $1 AND up.next_review_at <= $2)
-		   OR (up.user_id IS NULL)
-		ORDER BY up.next_review_at ASC NULLS LAST, random()
-		LIMIT 1;`
+	`
+	args := []interface{}{userID, time.Now()}
 
-	row := db.QueryRow(ctx, query, userID, time.Now())
+	// Dynamically build the WHERE clause
+	var whereClauses []string
+	whereClauses = append(whereClauses, "( (up.user_id = $1 AND up.next_review_at <= $2) OR (up.user_id IS NULL) )")
+
+	if source != "" {
+		whereClauses = append(whereClauses, "w.source = $3")
+		args = append(args, source)
+	}
+
+	query += " WHERE " + strings.Join(whereClauses, " AND ")
+	query += " ORDER BY up.next_review_at ASC NULLS LAST, random() LIMIT 1;"
+
+	row := db.QueryRow(ctx, query, args...)
 
 	var meaning models.Meaning
 	err := row.Scan(

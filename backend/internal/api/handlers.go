@@ -100,7 +100,9 @@ func (a *API) GetNextWord(c *gin.Context) {
 		return
 	}
 
-	meaning, err := srs.GetNextWordForReview(c.Request.Context(), a.DB, userID)
+	source := c.Query("source") // Get source from query parameter
+
+	meaning, err := srs.GetNextWordForReview(c.Request.Context(), a.DB, userID, source)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"message": "Congratulations! You have learned all available words."})
@@ -142,6 +144,32 @@ func (a *API) ReviewWord(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Progress updated successfully"})
+}
+
+func (a *API) GetVocabSources(c *gin.Context) {
+	rows, err := a.DB.Query(c, "SELECT DISTINCT source FROM words WHERE source IS NOT NULL AND source <> ''")
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query vocabulary sources"})
+		return
+	}
+	defer rows.Close()
+
+	var sources []string
+	for rows.Next() {
+		var source string
+		if err := rows.Scan(&source); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan vocabulary source"})
+			return
+		}
+		sources = append(sources, source)
+	}
+
+	if err := rows.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error iterating vocabulary sources"})
+		return
+	}
+
+	c.JSON(http.StatusOK, sources)
 }
 
 // RootHandler provides a welcome message for the API root.

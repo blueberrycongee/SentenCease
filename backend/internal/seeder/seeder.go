@@ -60,10 +60,10 @@ func (s *Seeder) SeedDatabase(ctx context.Context, words []models.Word, meanings
 		}
 
 		_, err := tx.Exec(ctx, `
-			INSERT INTO meanings (word_id, part_of_speech, definition, example_sentence, example_sentence_translation)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO meanings (word_id, part_of_speech, definition, example_sentence, example_sentence_translation, unit)
+			VALUES ($1, $2, $3, $4, $5, $6)
 			ON CONFLICT (word_id, definition) DO NOTHING
-		`, wordID, meaning.PartOfSpeech, meaning.Definition, meaning.ExampleSentence, meaning.ExampleSentenceTranslation)
+		`, wordID, meaning.PartOfSpeech, meaning.Definition, meaning.ExampleSentence, meaning.ExampleSentenceTranslation, meaning.Unit)
 		if err != nil {
 			// Log the error but continue, to not fail the entire batch.
 			log.Printf("Error inserting meaning for word %s: %v", meaning.Lemma, err)
@@ -126,6 +126,7 @@ func (s *Seeder) LoadWordsFromDirectory(path, source string) ([]models.Word, []m
 						Definition:                 strings.TrimSpace(trans.Translation),
 						ExampleSentence:            exampleSentence,
 						ExampleSentenceTranslation: &exampleTranslation,
+						Unit:                       sw.Unit,
 					}
 					meanings = append(meanings, meaning)
 				}

@@ -26,13 +26,14 @@ type Word struct {
 // Meaning represents a single definition and example for a word.
 // It corresponds to the `meanings` table.
 type Meaning struct {
-	ID                         int     `json:"meaningId"`
-	WordID                     int     `json:"wordId"`
-	Lemma                      string  `json:"lemma"`
-	PartOfSpeech               string  `json:"partOfSpeech"`
+	ID                         int     `json:"id"`
+	WordID                     int     `json:"word_id"`
+	PartOfSpeech               string  `json:"part_of_speech"`
 	Definition                 string  `json:"definition"`
-	ExampleSentence            string  `json:"exampleSentence"`
-	ExampleSentenceTranslation *string `json:"exampleSentenceTranslation,omitempty"`
+	ExampleSentence            string  `json:"example_sentence"`
+	ExampleSentenceTranslation *string `json:"example_sentence_translation,omitempty"`
+	Lemma                      string  `json:"lemma"` // Used for temporary association, not a DB field in meanings
+	Unit                       string  `json:"unit,omitempty"`
 }
 
 // UserProgress represents the learning progress of a user for a specific meaning.

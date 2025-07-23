@@ -22,6 +22,13 @@ func main() {
 	}
 	defer db.Close()
 
+	// Truncate tables before seeding
+	log.Println("Truncating tables...")
+	_, err = db.Exec(context.Background(), "TRUNCATE TABLE words, meanings, user_progress, daily_plans, daily_plan_words RESTART IDENTITY CASCADE")
+	if err != nil {
+		log.Fatalf("could not truncate tables: %v", err)
+	}
+
 	seederInstance := seeder.NewSeeder(db)
 
 	// We assume the script is run from the `backend` directory.

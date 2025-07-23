@@ -5,6 +5,7 @@ import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import LearnPage from '../pages/LearnPage';
 import ProtectedRoute from '../components/ProtectedRoute';
+import SelectWordsPage from '../pages/SelectWordsPage';
 
 const router = createBrowserRouter([
   {
@@ -28,6 +29,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <LearnPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'select-words',
+        element: (
+          <ProtectedRoute>
+            <SelectWordsPage />
           </ProtectedRoute>
         ),
       },

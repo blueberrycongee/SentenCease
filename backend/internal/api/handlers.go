@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 
@@ -194,6 +195,114 @@ func (a *API) GetVocabSources(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, sources)
+}
+
+func (a *API) GetWordsBySource(c *gin.Context) {
+	source := c.Param("source")
+
+	query := `
+        SELECT m.id, w.lemma, m.unit
+        FROM meanings m
+        JOIN words w ON m.word_id = w.id
+        WHERE w.source = $1
+        ORDER BY m.unit, w.lemma
+    `
+
+	rows, err := a.DB.Query(c.Request.Context(), query, source)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query words by source"})
+		return
+	}
+	defer rows.Close()
+
+	type WordInfo struct {
+		ID    int    `json:"id"`
+		Lemma string `json:"lemma"`
+		Unit  string `json:"unit"`
+	}
+
+	wordsByUnit := make(map[string][]WordInfo)
+	for rows.Next() {
+		var wi WordInfo
+		var unit sql.NullString // Use sql.NullString for nullable unit column
+		if err := rows.Scan(&wi.ID, &wi.Lemma, &unit); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan word info"})
+			return
+		}
+
+		unitStr := "Default"
+		if unit.Valid {
+			unitStr = unit.String
+		}
+		wi.Unit = unitStr
+
+		wordsByUnit[unitStr] = append(wordsByUnit[unitStr], wi)
+	}
+
+	if err := rows.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error iterating words by source"})
+		return
+	}
+
+	c.JSON(http.StatusOK, wordsByUnit)
+}
+
+func (a *API) CreateDailyPlan(c *gin.Context) {
+	userIDClaim, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+		return
+	}
+
+	userID, ok := userIDClaim.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format in token"})
+		return
+	}
+
+	var req struct {
+		MeaningIDs []int `json:"meaning_ids"`
+	}
+
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	tx, err := a.DB.Begin(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start transaction"})
+		return
+	}
+	defer tx.Rollback(c.Request.Context())
+
+	// Create a new daily plan
+	var planID uuid.UUID
+	err = tx.QueryRow(c.Request.Context(),
+		`INSERT INTO daily_plans (user_id) VALUES ($1) RETURNING id`,
+		userID).Scan(&planID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create daily plan"})
+		return
+	}
+
+	// Insert into the join table
+	for _, meaningID := range req.MeaningIDs {
+		_, err := tx.Exec(c.Request.Context(),
+			`INSERT INTO daily_plan_words (plan_id, meaning_id) VALUES ($1, $2)`,
+			planID, meaningID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add words to daily plan"})
+			return
+		}
+	}
+
+	if err := tx.Commit(c.Request.Context()); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "Daily plan created successfully", "plan_id": planID})
 }
 
 // RootHandler provides a welcome message for the API root.

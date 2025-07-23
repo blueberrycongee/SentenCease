@@ -21,6 +21,20 @@ import (
 // It prioritizes words that are due for review. If no words are due, it returns a new, never-seen word.
 // If a source is provided, it filters words from that source.
 func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.MeaningForReview, error) {
+	var err error
+	// 1. Check for a daily plan first
+	meaning, err := getNextWordFromDailyPlan(ctx, db, userID)
+	if err == nil && meaning != nil {
+		log.Printf("Found next word from daily plan for user %s", userID)
+		return meaning, nil
+	}
+	if err != nil && !errors.Is(err, database.ErrNotFound) {
+		log.Printf("Error fetching from daily plan: %v", err)
+		// Don't return, fall back to the old logic
+	}
+
+	// 2. Fallback to the original logic if no daily plan or plan is empty
+	log.Printf("No word from daily plan, falling back to original logic for user %s", userID)
 	// Base query
 	query := `
 		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
@@ -45,7 +59,7 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 	row := db.QueryRow(ctx, query, args...)
 
 	var m models.Meaning
-	err := row.Scan(
+	err = row.Scan(
 		&m.ID,
 		&m.WordID,
 		&m.PartOfSpeech,
@@ -67,8 +81,51 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 	log.Printf("Retrieved meaning: ID=%d, WordID=%d, PartOfSpeech=%s, Definition=%s, Lemma=%s",
 		m.ID, m.WordID, m.PartOfSpeech, m.Definition, m.Lemma)
 
-	wordInSentence := findWordInSentence(m.ExampleSentence, m.Lemma)
+	return processMeaningForReview(&m), nil
+}
 
+// getNextWordFromDailyPlan tries to fetch the next word from the user's most recent daily plan.
+func getNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (*models.MeaningForReview, error) {
+	query := `
+		WITH latest_plan AS (
+			SELECT id FROM daily_plans
+			WHERE user_id = $1 AND created_at >= current_date
+			ORDER BY created_at DESC
+			LIMIT 1
+		)
+		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
+		FROM meanings m
+		JOIN words w ON m.word_id = w.id
+		JOIN daily_plan_words dpw ON m.id = dpw.meaning_id
+		LEFT JOIN user_progress up ON m.id = up.meaning_id AND up.user_id = $1
+		WHERE dpw.plan_id = (SELECT id FROM latest_plan)
+		  AND (up.user_id IS NULL OR up.next_review_at <= $2)
+		ORDER BY up.next_review_at ASC NULLS LAST, random()
+		LIMIT 1;
+	`
+	args := []interface{}{userID, time.Now()}
+
+	row := db.QueryRow(ctx, query, args...)
+
+	var m models.Meaning
+	err := row.Scan(
+		&m.ID, &m.WordID, &m.PartOfSpeech, &m.Definition, &m.ExampleSentence, &m.ExampleSentenceTranslation, &m.Lemma,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, database.ErrNotFound // No words in plan or all reviewed
+		}
+		return nil, err
+	}
+	return processMeaningForReview(&m), nil
+}
+
+// processMeaningForReview takes a Meaning object and enriches it for review.
+func processMeaningForReview(m *models.Meaning) *models.MeaningForReview {
+	log.Printf("Processing meaning: ID=%d, WordID=%d, PartOfSpeech=%s, Definition=%s, Lemma=%s",
+		m.ID, m.WordID, m.PartOfSpeech, m.Definition, m.Lemma)
+	wordInSentence := findWordInSentence(m.ExampleSentence, m.Lemma)
 	// 检查词性是否为空或不是中文，如果是则尝试修复
 	if m.PartOfSpeech == "" || !containsChineseCharacters(m.PartOfSpeech) {
 		// 尝试从定义中提取词性
@@ -77,15 +134,13 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 			m.PartOfSpeech = pos
 		} else {
 			// 如果无法提取，使用默认词性
-			m.PartOfSpeech = "未知"
+			m.PartOfSpeech = ""
 		}
 	}
-
 	// 检查定义是否为英文而不是中文，如果是则尝试将其标记为需要修复
 	if !containsChineseCharacters(m.Definition) {
 		m.Definition = "[需要翻译] " + m.Definition
 	}
-
 	reviewMeaning := &models.MeaningForReview{
 		MeaningID:                  m.ID,
 		PartOfSpeech:               m.PartOfSpeech,
@@ -95,8 +150,7 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 		Lemma:                      m.Lemma,
 		Word:                       wordInSentence,
 	}
-
-	return reviewMeaning, nil
+	return reviewMeaning
 }
 
 // UpdateProgress updates a user's progress for a specific meaning based on their self-assessment.

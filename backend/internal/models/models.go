@@ -49,3 +49,14 @@ type ReviewRequest struct {
 	MeaningID  int    `json:"meaningId" binding:"required"`
 	UserChoice string `json:"userChoice" binding:"required,oneof=认识 模糊 不认识"`
 }
+
+// MeaningForReview is the data structure sent to the frontend for a learning session.
+type MeaningForReview struct {
+	MeaningID                  int     `json:"meaningId"`
+	PartOfSpeech               string  `json:"partOfSpeech"`
+	Definition                 string  `json:"definition"`
+	ExampleSentence            string  `json:"exampleSentence"`
+	ExampleSentenceTranslation *string `json:"exampleSentenceTranslation,omitempty"`
+	Lemma                      string  `json:"lemma"`
+	Word                       string  `json:"word"` // The actual word form in the sentence
+}

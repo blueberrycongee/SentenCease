@@ -1,13 +1,13 @@
 import React from 'react';
 
 const Button = ({ children, onClick, type = 'button', disabled = false, variant = 'primary', className = '' }) => {
-  const baseClasses = 'w-full px-6 py-3 font-bold rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100';
+  const baseClasses = 'px-6 py-3 font-semibold rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants = {
-    primary: 'bg-teal-500 text-white hover:bg-teal-600 focus:ring-teal-400',
-    success: 'bg-green-500 text-white hover:bg-green-600 focus:ring-green-400',
-    warning: 'bg-yellow-500 text-white hover:bg-yellow-600 focus:ring-yellow-400',
-    danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-400',
+    primary: 'bg-slate-300 text-slate-800 hover:bg-slate-400/80 focus:ring-slate-400',
+    success: 'bg-emerald-200 text-emerald-900 hover:bg-emerald-300/80 focus:ring-emerald-400',
+    warning: 'bg-amber-200 text-amber-900 hover:bg-amber-300/80 focus:ring-amber-400',
+    danger: 'bg-rose-200 text-rose-900 hover:bg-rose-300/80 focus:ring-rose-400',
   };
 
   return (

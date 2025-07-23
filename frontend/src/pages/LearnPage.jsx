@@ -8,8 +8,12 @@ const LearnPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [isInteractable, setIsInteractable] = useState(false);
 
   const fetchNextWord = useCallback(async () => {
+    setIsRevealed(false);
+    setIsInteractable(false);
     setLoading(true);
     setError('');
     try {
@@ -19,12 +23,22 @@ const LearnPage = () => {
       setError(err.response?.data?.error || '无法获取下一个词汇。');
     } finally {
       setLoading(false);
+      setIsSubmitting(false);
     }
   }, []);
 
   useEffect(() => {
     fetchNextWord();
   }, [fetchNextWord]);
+
+  useEffect(() => {
+    if (isRevealed) {
+      const timer = setTimeout(() => {
+        setIsInteractable(true);
+      }, 500); // Match this with the transition duration
+      return () => clearTimeout(timer);
+    }
+  }, [isRevealed]);
 
   const handleReview = async (userChoice) => {
     if (!meaning || !meaning.meaningId) return;
@@ -34,21 +48,25 @@ const LearnPage = () => {
         meaningId: meaning.meaningId,
         userChoice,
       });
-      // Add a small delay for user to see feedback, then fetch next word
-      setTimeout(() => {
-        fetchNextWord();
-        setIsSubmitting(false);
-      }, 300);
+      fetchNextWord();
     } catch (err) {
       setError(err.response?.data?.error || '提交复习记录失败。');
       setIsSubmitting(false);
     }
   };
   
-  const highlightLemma = (sentence, lemma) => {
-    if (!sentence || !lemma) return sentence;
-    const regex = new RegExp(`\\b(${lemma})\\b`, 'gi');
-    return sentence.replace(regex, `<strong class="text-teal-400 font-bold">$1</strong>`);
+  const renderHighlightedSentence = (sentence, word) => {
+    if (!sentence || !word) return word;
+    const parts = sentence.split(new RegExp(`(\\b${word}\\b)`, 'gi'));
+    return parts.map((part, index) =>
+      part.toLowerCase() === word.toLowerCase() ? (
+        <strong key={index} className="font-bold text-teal-400">
+          {part}
+        </strong>
+      ) : (
+        part
+      )
+    );
   };
 
   if (loading && !meaning) {
@@ -89,28 +107,38 @@ const LearnPage = () => {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl text-center transition-all duration-500 ease-in-out transform hover:-translate-y-1">
-        <div className="mb-8">
-          <p 
-            className="text-2xl sm:text-3xl text-gray-100 leading-relaxed font-serif"
-            dangerouslySetInnerHTML={{ __html: highlightLemma(meaning.exampleSentence, meaning.lemma) }}
-          />
+    <div 
+      className="flex items-center justify-center w-full min-h-[calc(100vh-120px)] p-4"
+      onClick={() => !isRevealed && setIsRevealed(true)}
+    >
+      <div 
+        className="w-full max-w-2xl mx-auto bg-gray-800 rounded-2xl shadow-xl flex flex-col justify-around min-h-[24rem] p-8"
+      >
+        <div className="flex items-center justify-center">
+          <p className="text-2xl sm:text-3xl text-gray-100 leading-relaxed text-center">
+            {renderHighlightedSentence(meaning.exampleSentence, meaning.word)}
+          </p>
         </div>
-        <div className="mb-10">
-          <p className="text-lg text-gray-400">{meaning.definition}</p>
-        </div>
+        
+        <div 
+          className={`transition-all duration-500 ease-in-out mt-4 ${isRevealed ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="mb-10 min-h-[3rem] flex items-center justify-center">
+            <p className="text-lg text-gray-400">{meaning.definition}</p>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Button onClick={() => handleReview('不认识')} disabled={isSubmitting} variant="danger">
-            不认识
-          </Button>
-          <Button onClick={() => handleReview('模糊')} disabled={isSubmitting} variant="warning">
-            模糊
-          </Button>
-          <Button onClick={() => handleReview('认识')} disabled={isSubmitting} variant="success">
-            认识
-          </Button>
+          <div className="flex justify-center gap-4">
+            <Button onClick={(e) => { e.stopPropagation(); handleReview('不认识'); }} disabled={isSubmitting || !isInteractable} variant="danger">
+              不认识
+            </Button>
+            <Button onClick={(e) => { e.stopPropagation(); handleReview('模糊'); }} disabled={isSubmitting || !isInteractable} variant="warning">
+              模糊
+            </Button>
+            <Button onClick={(e) => { e.stopPropagation(); handleReview('认识'); }} disabled={isSubmitting || !isInteractable} variant="success">
+              认识
+            </Button>
+          </div>
         </div>
       </div>
     </div>

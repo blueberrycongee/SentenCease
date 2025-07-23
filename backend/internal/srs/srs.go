@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"regexp"
 	"sentencease/backend/internal/database"
 	"sentencease/backend/internal/models"
 	"strings"
@@ -17,7 +18,7 @@ import (
 // GetNextWordForReview finds the next meaning for a user to review.
 // It prioritizes words that are due for review. If no words are due, it returns a new, never-seen word.
 // If a source is provided, it filters words from that source.
-func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.Meaning, error) {
+func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.MeaningForReview, error) {
 	// Base query
 	query := `
 		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
@@ -41,15 +42,15 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 
 	row := db.QueryRow(ctx, query, args...)
 
-	var meaning models.Meaning
+	var m models.Meaning
 	err := row.Scan(
-		&meaning.ID,
-		&meaning.WordID,
-		&meaning.PartOfSpeech,
-		&meaning.Definition,
-		&meaning.ExampleSentence,
-		&meaning.ExampleSentenceTranslation,
-		&meaning.Lemma,
+		&m.ID,
+		&m.WordID,
+		&m.PartOfSpeech,
+		&m.Definition,
+		&m.ExampleSentence,
+		&m.ExampleSentenceTranslation,
+		&m.Lemma,
 	)
 
 	if err != nil {
@@ -61,7 +62,19 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 		return nil, err
 	}
 
-	return &meaning, nil
+	wordInSentence := findWordInSentence(m.ExampleSentence, m.Lemma)
+
+	reviewMeaning := &models.MeaningForReview{
+		MeaningID:                  m.ID,
+		PartOfSpeech:               m.PartOfSpeech,
+		Definition:                 m.Definition,
+		ExampleSentence:            m.ExampleSentence,
+		ExampleSentenceTranslation: m.ExampleSentenceTranslation,
+		Lemma:                      m.Lemma,
+		Word:                       wordInSentence,
+	}
+
+	return reviewMeaning, nil
 }
 
 // UpdateProgress updates a user's progress for a specific meaning based on their self-assessment.
@@ -133,4 +146,31 @@ func calculateNextInterval(stage int) time.Duration {
 	// Exponential backoff: 1 day, 3 days, 7 days, etc.
 	days := math.Pow(2.5, float64(stage-1))
 	return time.Hour * 24 * time.Duration(days)
+}
+
+// findWordInSentence attempts to find the specific form of a lemma in a sentence.
+// It handles simple cases like plurals (s, es) and past tense (ed, d).
+// This is a simplistic approach and may not cover all grammatical variations.
+func findWordInSentence(sentence, lemma string) string {
+	// 1. First, try an exact match (case-insensitive)
+	// The `\b` ensures we match whole words only.
+	exactRegex := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(lemma) + `\b`)
+	if found := exactRegex.FindString(sentence); found != "" {
+		return found
+	}
+
+	// 2. If no exact match, try to find variations.
+	// This regex looks for the lemma followed by common suffixes (s, es, ed, ing, d).
+	// It's a simple heuristic and might not be perfect.
+	variationRegex := regexp.MustCompile(`(?i)\b` + regexp.QuoteMeta(lemma) + `(s|es|ed|ing|d)?\b`)
+	foundVariations := variationRegex.FindAllString(sentence, -1)
+
+	// If variations are found, return the first one. This is a heuristic.
+	if len(foundVariations) > 0 {
+		return foundVariations[0]
+	}
+
+	// 3. As a last resort, if no variations are found, return the original lemma.
+	// The frontend will try its best, but might not highlight anything.
+	return lemma
 }

@@ -36,4 +36,15 @@ api.interceptors.response.use(
   }
 );
 
+// 添加学习进度API方法
+api.getLearningProgress = async () => {
+  try {
+    const response = await api.get('/learn/progress');
+    return response.data;
+  } catch (error) {
+    console.error('获取学习进度失败:', error);
+    throw error;
+  }
+};
+
 export default api; 

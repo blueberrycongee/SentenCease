@@ -58,6 +58,7 @@ func main() {
 		{
 			authRequired.GET("/learn/next", apiHandler.GetNextWord)
 			authRequired.POST("/learn/review", apiHandler.ReviewWord)
+			authRequired.GET("/learn/progress", apiHandler.GetLearningProgress)
 			authRequired.GET("/vocab-sources", apiHandler.GetVocabSources)
 			authRequired.GET("/words/selection", apiHandler.GetWordsForSelection)
 			authRequired.GET("/vocab-sources/:source/words", apiHandler.GetWordsBySource)

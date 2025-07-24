@@ -16,6 +16,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -403,4 +404,67 @@ func (a *API) GetWordDetails(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, meaning)
+}
+
+// GetLearningProgress fetches the current learning progress for the user
+func (a *API) GetLearningProgress(c *gin.Context) {
+	userIDClaim, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+		return
+	}
+
+	userID, ok := userIDClaim.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format in token"})
+		return
+	}
+
+	// 获取用户当日学习计划
+	query := `
+		WITH latest_plan AS (
+			SELECT id FROM daily_plans
+			WHERE user_id = $1 AND created_at >= current_date
+			ORDER BY created_at DESC
+			LIMIT 1
+		)
+		SELECT COUNT(*) AS total_words
+		FROM daily_plan_words
+		WHERE plan_id = (SELECT id FROM latest_plan)
+	`
+
+	var totalWords int
+	err := a.DB.QueryRow(c.Request.Context(), query, userID).Scan(&totalWords)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			c.JSON(http.StatusOK, gin.H{"total": 0, "completed": 0})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get learning plan"})
+		return
+	}
+
+	// 获取已完成的单词数量
+	completedQuery := `
+		WITH latest_plan AS (
+			SELECT id FROM daily_plans
+			WHERE user_id = $1 AND created_at >= current_date
+			ORDER BY created_at DESC
+			LIMIT 1
+		)
+		SELECT COUNT(*) AS completed_words
+		FROM daily_plan_words dpw
+		JOIN user_progress up ON dpw.meaning_id = up.meaning_id AND up.user_id = $1
+		WHERE dpw.plan_id = (SELECT id FROM latest_plan)
+		  AND up.last_reviewed_at >= current_date
+	`
+
+	var completedWords int
+	err = a.DB.QueryRow(c.Request.Context(), completedQuery, userID).Scan(&completedWords)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get completed words count"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"total": totalWords, "completed": completedWords})
 }

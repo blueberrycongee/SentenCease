@@ -7,7 +7,7 @@ const SelectWordsPage = () => {
     const [selectedSource, setSelectedSource] = useState('');
     const [wordsByUnit, setWordsByUnit] = useState({});
     const [selectedWords, setSelectedWords] = useState(new Set());
-    const [dailyGoal, setDailyGoal] = useState(20);
+    const [dailyGoal, setDailyGoal] = useState(100);
     const [wordCount, setWordCount] = useState(10);
     const [order, setOrder] = useState('sequential');
     const [fetchedWords, setFetchedWords] = useState([]);
@@ -69,6 +69,7 @@ const SelectWordsPage = () => {
             alert('Please select some words to learn.');
             return;
         }
+        
         try {
             const meaningIds = Array.from(selectedWords);
             await api.post('/daily-plan', { meaning_ids: meaningIds });
@@ -105,25 +106,41 @@ const SelectWordsPage = () => {
             {/* Custom selection controls */}
             <div className="mb-4 p-4 border rounded dark:border-gray-600">
                 <h2 className="text-xl mb-2">自定义今日学习</h2>
-                <div className="flex items-center space-x-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label htmlFor="word-count" className="block mb-1">单词数量:</label>
+                        <label htmlFor="daily-goal" className="block mb-1">今日学习目标 (单词数):</label>
+                        <input
+                            type="number"
+                            id="daily-goal"
+                            value={dailyGoal}
+                            onChange={(e) => setDailyGoal(parseInt(e.target.value, 10))}
+                            min="1"
+                            className="p-2 border rounded dark:bg-gray-700 w-full"
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="word-count" className="block mb-1">每次加载单词数量:</label>
                         <input
                             type="number"
                             id="word-count"
                             value={wordCount}
                             onChange={(e) => setWordCount(parseInt(e.target.value, 10))}
-                            className="p-2 border rounded dark:bg-gray-700 w-24"
+                            min="1"
+                            className="p-2 border rounded dark:bg-gray-700 w-full"
                         />
                     </div>
-                    <div>
-                        <label className="block mb-1">选择方式:</label>
-                        <div className="flex space-x-2">
-                            <button onClick={() => setOrder('sequential')} className={`px-4 py-2 rounded ${order === 'sequential' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600'}`}>顺选</button>
-                            <button onClick={() => setOrder('random')} className={`px-4 py-2 rounded ${order === 'random' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600'}`}>随机选</button>
-                        </div>
+                </div>
+
+                <div className="mt-4">
+                    <label className="block mb-1">选择方式:</label>
+                    <div className="flex space-x-2">
+                        <button onClick={() => setOrder('sequential')} className={`px-4 py-2 rounded ${order === 'sequential' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600'}`}>顺选</button>
+                        <button onClick={() => setOrder('random')} className={`px-4 py-2 rounded ${order === 'random' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-600'}`}>随机选</button>
                     </div>
-                    <button onClick={handleFetchWords} className="self-end bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                </div>
+
+                <div className="mt-4">
+                    <button onClick={handleFetchWords} className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
                         获取单词
                     </button>
                 </div>
@@ -133,13 +150,18 @@ const SelectWordsPage = () => {
             <div>
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-xl">单词列表 ({selectedWords.size} selected)</h2>
-                    <button
-                        onClick={handleStartLearning}
-                        disabled={selectedWords.size === 0}
-                        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400"
-                    >
-                        开始学习
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <div className="text-sm text-gray-500">
+                            计划学习: {dailyGoal} 单词
+                        </div>
+                        <button
+                            onClick={handleStartLearning}
+                            disabled={selectedWords.size === 0}
+                            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded disabled:bg-gray-400"
+                        >
+                            开始学习
+                        </button>
+                    </div>
                 </div>
 
                 {fetchedWords.length > 0 && (

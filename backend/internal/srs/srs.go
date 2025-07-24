@@ -186,6 +186,13 @@ func UpdateProgress(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, mea
 	// 记录所有操作，帮助调试
 	log.Printf("Updating progress for user %s on meaning %d with choice: %s", userID, meaningID, userChoice)
 
+	// 获取使用的SRS算法
+	algorithm, err := GetSRSAlgorithm(ctx, db)
+	if err != nil {
+		log.Printf("Error getting SRS algorithm: %v, using default (sspmmc)", err)
+		algorithm = "sspmmc" // 默认使用SSP-MMC
+	}
+
 	tx, err := db.Begin(ctx)
 	if err != nil {
 		log.Printf("Error beginning transaction: %v", err)
@@ -193,16 +200,36 @@ func UpdateProgress(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, mea
 	}
 	defer tx.Rollback(ctx) // 始终尝试回滚，如果事务已提交则无效
 
-	// Get current progress
+	// 获取单词信息
+	var meaning models.Meaning
+	meaningQuery := `SELECT id, word_id, difficulty FROM meanings WHERE id = $1`
+	err = tx.QueryRow(ctx, meaningQuery, meaningID).Scan(&meaning.ID, &meaning.WordID, &meaning.Difficulty)
+	if err != nil {
+		log.Printf("Error fetching meaning info: %v", err)
+		return err
+	}
+
+	// 获取当前进度
 	var progress models.UserProgress
-	query := `SELECT srs_stage FROM user_progress WHERE user_id = $1 AND meaning_id = $2;`
-	err = tx.QueryRow(ctx, query, userID, meaningID).Scan(&progress.SRSStage)
+	query := `SELECT 
+		srs_stage, 
+		COALESCE(memory_halflife, 4.0) as memory_halflife,
+		COALESCE(review_count, 0) as review_count
+		FROM user_progress 
+		WHERE user_id = $1 AND meaning_id = $2;`
+
+	err = tx.QueryRow(ctx, query, userID, meaningID).Scan(
+		&progress.SRSStage,
+		&progress.MemoryHalfLife,
+		&progress.ReviewCount,
+	)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			// This is a new word for the user, so create initial progress record.
 			log.Printf("No existing progress found for user %s and meaning %d. Starting at stage 0.", userID, meaningID)
-			progress.SRSStage = 0 // Start at stage 0
+			progress.SRSStage = 0         // Start at stage 0
+			progress.MemoryHalfLife = 4.0 // 默认初始半衰期4小时
 		} else {
 			log.Printf("Error querying current progress: %v", err)
 			return err
@@ -211,28 +238,64 @@ func UpdateProgress(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, mea
 		log.Printf("Found existing progress for user %s and meaning %d: stage %d", userID, meaningID, progress.SRSStage)
 	}
 
-	// Calculate new SRS stage
-	newStage := calculateNextStage(progress.SRSStage, userChoice)
-	log.Printf("Calculated new SRS stage: %d (from %d)", newStage, progress.SRSStage)
+	// 根据选择的算法更新进度
+	if algorithm == "sspmmc" {
+		// 使用SSP-MMC算法
+		// 将单词意义ID和用户选择传递给sspmmc.go中的函数
+		progress.MeaningID = meaningID
+		progress.UserID = userID
 
-	// Calculate next review interval
-	nextInterval := calculateNextInterval(newStage)
-	nextReviewAt := time.Now().Add(nextInterval)
-	log.Printf("Next review scheduled at: %v (in %v)", nextReviewAt, nextInterval)
+		// 调用SSP-MMC算法更新进度
+		UpdateProgressWithSSPMMC(&progress, &meaning, userChoice)
 
-	// Upsert progress
-	upsertQuery := `
-		INSERT INTO user_progress (user_id, meaning_id, srs_stage, last_reviewed_at, next_review_at)
-		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (user_id, meaning_id) DO UPDATE SET
-			srs_stage = EXCLUDED.srs_stage,
-			last_reviewed_at = EXCLUDED.last_reviewed_at,
-			next_review_at = EXCLUDED.next_review_at;`
+		// Upsert progress with SSP-MMC fields
+		upsertQuery := `
+			INSERT INTO user_progress 
+				(user_id, meaning_id, srs_stage, last_reviewed_at, next_review_at,
+				 memory_halflife, optimal_interval, review_count, last_recall_success)
+			VALUES 
+				($1, $2, $3, $4, $5, $6, $7, $8, $9)
+			ON CONFLICT (user_id, meaning_id) DO UPDATE SET
+				srs_stage = EXCLUDED.srs_stage,
+				last_reviewed_at = EXCLUDED.last_reviewed_at,
+				next_review_at = EXCLUDED.next_review_at,
+				memory_halflife = EXCLUDED.memory_halflife,
+				optimal_interval = EXCLUDED.optimal_interval,
+				review_count = EXCLUDED.review_count,
+				last_recall_success = EXCLUDED.last_recall_success;`
 
-	_, err = tx.Exec(ctx, upsertQuery, userID, meaningID, newStage, time.Now(), nextReviewAt)
-	if err != nil {
-		log.Printf("Error upserting progress: %v", err)
-		return err
+		_, err = tx.Exec(ctx, upsertQuery,
+			userID, meaningID, progress.SRSStage, time.Now(), progress.NextReviewAt,
+			progress.MemoryHalfLife, progress.OptimalInterval, progress.ReviewCount,
+			progress.LastRecallSuccess)
+		if err != nil {
+			log.Printf("Error upserting progress with SSP-MMC: %v", err)
+			return err
+		}
+	} else {
+		// 使用传统算法（向后兼容）
+		newStage := calculateNextStage(progress.SRSStage, userChoice)
+		log.Printf("Calculated new SRS stage: %d (from %d)", newStage, progress.SRSStage)
+
+		// Calculate next review interval
+		nextInterval := calculateNextInterval(newStage)
+		nextReviewAt := time.Now().Add(nextInterval)
+		log.Printf("Next review scheduled at: %v (in %v)", nextReviewAt, nextInterval)
+
+		// Upsert progress
+		upsertQuery := `
+			INSERT INTO user_progress (user_id, meaning_id, srs_stage, last_reviewed_at, next_review_at)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (user_id, meaning_id) DO UPDATE SET
+				srs_stage = EXCLUDED.srs_stage,
+				last_reviewed_at = EXCLUDED.last_reviewed_at,
+				next_review_at = EXCLUDED.next_review_at;`
+
+		_, err = tx.Exec(ctx, upsertQuery, userID, meaningID, newStage, time.Now(), nextReviewAt)
+		if err != nil {
+			log.Printf("Error upserting progress: %v", err)
+			return err
+		}
 	}
 
 	err = tx.Commit(ctx)
@@ -396,4 +459,31 @@ func getDailyPlanProgress(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 	}
 
 	return completedWords, totalWords, nil
+}
+
+// GetSRSAlgorithm 从数据库获取当前使用的SRS算法
+func GetSRSAlgorithm(ctx context.Context, db *pgxpool.Pool) (string, error) {
+	var algorithm string
+	query := `SELECT value FROM app_settings WHERE key = 'srs_algorithm'`
+
+	err := db.QueryRow(ctx, query).Scan(&algorithm)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "sspmmc", nil // 默认使用SSP-MMC
+		}
+		return "", err
+	}
+
+	return algorithm, nil
+}
+
+// SetSRSAlgorithm 设置使用的SRS算法
+func SetSRSAlgorithm(ctx context.Context, db *pgxpool.Pool, algorithm string) error {
+	query := `
+		INSERT INTO app_settings (key, value, description)
+		VALUES ('srs_algorithm', $1, 'The spaced repetition algorithm used by the system')
+		ON CONFLICT (key) DO UPDATE SET value = $1;`
+
+	_, err := db.Exec(ctx, query, algorithm)
+	return err
 }

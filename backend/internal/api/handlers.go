@@ -509,3 +509,27 @@ func (a *API) GetUserStats(c *gin.Context) {
 		"learnedWordsCount": learnedWordsCount,
 	})
 }
+
+// GetSRSAlgorithmInfo 返回当前使用的SRS算法信息
+func (a *API) GetSRSAlgorithmInfo(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	// 获取当前使用的SRS算法
+	algorithm, err := srs.GetSRSAlgorithm(ctx, a.DB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get SRS algorithm info"})
+		return
+	}
+
+	var info string
+	if algorithm == "sspmmc" {
+		info = srs.GetSSPMMCInfo()
+	} else {
+		info = "标准间隔重复算法，基于用户的记忆阶段和Ebbinghaus遗忘曲线调整间隔时间。"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"algorithm": algorithm,
+		"info":      info,
+	})
+}

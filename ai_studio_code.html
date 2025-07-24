@@ -22,11 +22,12 @@
 
         body {
             font-family: 'Noto Sans', 'Noto Sans SC', sans-serif;
-            background-color: #f0f2f5; /* 使用柔和的浅灰色背景，增加质感 */
-            color: #333; /* 默认文字颜色使用深灰色，而非纯黑 */
+            background-color: #f0f2f5;
+            color: #333;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
+            overflow-x: hidden; /* 防止水平滚动 */
         }
 
         /* --- 顶部导航栏样式 --- */
@@ -43,7 +44,7 @@
         .logo {
             font-size: 22px;
             font-weight: 700;
-            color: #0052cc; /* 品牌蓝色 */
+            color: #0052cc;
         }
 
         .profile-icon {
@@ -58,18 +59,49 @@
             justify-content: center;
             align-items: center;
             padding: 40px 20px;
+            position: relative; /* 为前后卡片提供定位上下文 */
+        }
+
+        /* --- 前后单词卡片样式 --- */
+        .prev-card, .next-card {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.5); /* 半透明背景 */
+            border-radius: 12px;
+            padding: 20px;
+            width: 280px;
+            transform: rotate(-45deg); /* 45度角旋转 */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            z-index: 1; /* 位于主卡片后方 */
+        }
+
+        .prev-card {
+            left: 10%; /* 左侧位置 */
+        }
+
+        .next-card {
+            right: 10%; /* 右侧位置 */
+            transform: rotate(45deg); /* 右侧使用正45度角 */
+        }
+
+        .prev-card .card-word, .next-card .card-word {
+            font-size: 24px;
+            font-weight: 700;
+            color: #666;
+            text-align: center;
         }
 
         /* --- 核心学习卡片样式 --- */
         .learning-card {
             background-color: #ffffff;
-            border-radius: 16px; /* 更大的圆角，更现代 */
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* 更柔和、自然的阴影 */
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
             padding: 40px;
             width: 100%;
             max-width: 600px;
             text-align: center;
-            transform: translateY(-20px); /* 向上微移，使其成为视觉焦点 */
+            transform: translateY(-20px);
+            z-index: 10; /* 确保主卡片在最前方 */
         }
 
         /* --- 例句区域样式 --- */
@@ -85,13 +117,13 @@
         }
 
         .sentence-en .highlight {
-            color: #0052cc; /* 使用品牌色高亮核心单词 */
+            color: #0052cc;
             font-weight: 700;
         }
 
         .sentence-zh {
             font-size: 16px;
-            color: #86909c; /* 翻译使用浅灰色，降低视觉权重 */
+            color: #86909c;
         }
 
         /* --- 分割线样式 --- */
@@ -124,7 +156,7 @@
         .action-buttons {
             display: flex;
             justify-content: center;
-            gap: 15px; /* 设置按钮之间的间距 */
+            gap: 15px;
         }
 
         .btn {
@@ -134,12 +166,12 @@
             font-size: 16px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s ease-in-out; /* 为所有属性添加平滑过渡效果 */
+            transition: all 0.2s ease-in-out;
             border: 1px solid transparent;
         }
 
         .btn:hover {
-            transform: translateY(-3px); /* 鼠标悬停时轻微上浮 */
+            transform: translateY(-3px);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
@@ -160,6 +192,22 @@
             color: #00875a;
             border-color: #c3f4e8;
         }
+
+        /* 响应式调整 */
+        @media (max-width: 1024px) {
+            .prev-card, .next-card {
+                width: 220px;
+                padding: 15px;
+            }
+            .prev-card { left: 5%; }
+            .next-card { right: 5%; }
+        }
+
+        @media (max-width: 768px) {
+            .prev-card, .next-card {
+                display: none; /* 小屏幕隐藏前后卡片 */
+            }
+        }
     </style>
 </head>
 <body>
@@ -172,9 +220,13 @@
 
     <!-- 主内容区域 -->
     <main class="main-content">
+        <!-- 上一张单词卡片 -->
+        <div class="prev-card">
+            <div class="card-word">objections</div>
+        </div>
+        
         <!-- 核心学习卡片 -->
         <div class="learning-card">
-            
             <div class="sentence-block">
                 <p class="sentence-en">The college has <strong class="highlight">revised</strong> its plans because of local objections.</p>
                 <p class="sentence-zh">由于地方上的反对，学院已经修改了计划。</p>
@@ -192,7 +244,11 @@
                 <button class="btn btn-blurry">模糊</button>
                 <button class="btn btn-know">认识</button>
             </div>
-
+        </div>
+        
+        <!-- 下一张单词卡片 -->
+        <div class="next-card">
+            <div class="card-word">college</div>
         </div>
     </main>
 

@@ -18,8 +18,7 @@ import (
 )
 
 // GetNextWordForReview finds the next meaning for a user to review.
-// It prioritizes words that are due for review. If no words are due, it returns a new, never-seen word.
-// If a source is provided, it filters words from that source.
+// This marks the word as being shown to the user.
 func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.MeaningForReview, error) {
 	// 1. 检查用户是否有当日计划
 	hasDailyPlan, err := checkDailyPlanExists(ctx, db, userID)
@@ -106,6 +105,21 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 	return processMeaningForReview(&m), nil
 }
 
+// PeekNextWordForReview 预览下一个待学习的单词，但不标记为已展示给用户
+// 这个函数与GetNextWordForReview逻辑相似，但不会修改数据库状态
+func PeekNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.MeaningForReview, error) {
+	// 优先从每日计划中获取下一个单词
+	meaning, err := peekNextWordFromDailyPlan(ctx, db, userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, database.ErrNotFound
+		}
+		return nil, err
+	}
+
+	return meaning, nil
+}
+
 // getNextWordFromDailyPlan tries to fetch the next word from the user's most recent daily plan.
 func getNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (*models.MeaningForReview, error) {
 	query := `
@@ -147,6 +161,45 @@ func getNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uuid
 		return nil, err
 	}
 	return processMeaningForReview(&m), nil
+}
+
+// peekNextWordFromDailyPlan 查看用户最近的每日计划中的下一个单词，但不更新状态
+func peekNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (*models.MeaningForReview, error) {
+	// 查询与getNextWordFromDailyPlan相似，但不包括更新状态的逻辑
+	var meaning models.MeaningForReview
+
+	query := `
+		SELECT m.id as meaning_id, w.lemma as word, m.definition, m.part_of_speech, 
+			   es.text as example_sentence, es.translation as example_sentence_translation
+		FROM daily_plan_items dpi
+		JOIN daily_plans dp ON dp.id = dpi.daily_plan_id
+		JOIN meanings m ON m.id = dpi.meaning_id
+		JOIN words w ON w.id = m.word_id
+		LEFT JOIN example_sentences es ON es.meaning_id = m.id AND es.is_primary = true
+		WHERE dp.user_id = $1 
+		AND dp.created_at = (SELECT MAX(created_at) FROM daily_plans WHERE user_id = $1)
+		AND dpi.status = 'pending'
+		ORDER BY dpi.order ASC
+		LIMIT 1
+	`
+
+	err := db.QueryRow(ctx, query, userID).Scan(
+		&meaning.MeaningID,
+		&meaning.Word,
+		&meaning.Definition,
+		&meaning.PartOfSpeech,
+		&meaning.ExampleSentence,
+		&meaning.ExampleSentenceTranslation,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, database.ErrNotFound
+		}
+		return nil, err
+	}
+
+	return &meaning, nil
 }
 
 // processMeaningForReview takes a Meaning object and enriches it for review.

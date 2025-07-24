@@ -64,10 +64,38 @@ const SelectWordsPage = () => {
         setSelectedWords(allWordIds);
     };
 
+    // 添加根据每日目标数量选择单词的函数
+    const handleSelectByGoal = () => {
+        if (fetchedWords.length === 0) {
+            alert('请先获取单词列表');
+            return;
+        }
+        
+        // 限制选择的单词数量不超过每日目标
+        const wordsToSelect = fetchedWords.slice(0, dailyGoal);
+        const wordIds = new Set(wordsToSelect.map(w => w.id));
+        setSelectedWords(wordIds);
+        
+        // 如果获取的单词不足，提示用户
+        if (wordsToSelect.length < dailyGoal) {
+            alert(`当前只获取了${wordsToSelect.length}个单词，少于每日目标${dailyGoal}个。可以增加每次加载数量后重新获取。`);
+        }
+    };
+
     const handleStartLearning = async () => {
         if (selectedWords.size === 0) {
-            alert('Please select some words to learn.');
+            alert('请选择需要学习的单词。');
             return;
+        }
+        
+        if (selectedWords.size < dailyGoal) {
+            if (!confirm(`您选择了${selectedWords.size}个单词，少于设定的目标${dailyGoal}个。确定开始学习吗？`)) {
+                return;
+            }
+        } else if (selectedWords.size > dailyGoal) {
+            if (!confirm(`您选择了${selectedWords.size}个单词，超过设定的目标${dailyGoal}个。确定全部加入学习计划吗？`)) {
+                return;
+            }
         }
         
         try {
@@ -165,18 +193,26 @@ const SelectWordsPage = () => {
                 </div>
 
                 {fetchedWords.length > 0 && (
-                     <div className="mb-4">
-                         <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t">
-                             <h3 className="font-bold">自定义选择</h3>
-                             <button
-                                 onClick={handleSelectAllFetched}
-                                 className="text-sm text-blue-500 hover:underline"
-                             >
-                                 全选
-                             </button>
-                         </div>
-                         <ul className="list-none p-2 border rounded-b dark:border-gray-600">
-                             {fetchedWords.map(word => (
+                    <div className="mb-4">
+                        <div className="flex justify-between items-center bg-gray-100 dark:bg-gray-700 p-2 rounded-t">
+                            <h3 className="font-bold">自定义选择</h3>
+                            <div className="flex space-x-2">
+                                <button
+                                    onClick={handleSelectByGoal}
+                                    className="text-sm bg-blue-500 text-white px-3 py-1 rounded"
+                                >
+                                    选择目标数量({dailyGoal})
+                                </button>
+                                <button
+                                    onClick={handleSelectAllFetched}
+                                    className="text-sm text-blue-500 hover:underline"
+                                >
+                                    全选
+                                </button>
+                            </div>
+                        </div>
+                        <ul className="list-none p-2 border rounded-b dark:border-gray-600">
+                            {fetchedWords.map(word => (
                                  <li key={word.id} className={`flex items-center justify-between py-2 px-3 rounded ${selectedWords.has(word.id) ? 'bg-blue-100 dark:bg-blue-900' : ''}`}>
                                      <div>
                                          <span className="font-semibold">{word.lemma}</span>

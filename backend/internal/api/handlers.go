@@ -120,6 +120,37 @@ func (a *API) GetNextWord(c *gin.Context) {
 	c.JSON(http.StatusOK, meaning)
 }
 
+// PeekNextWord fetches a preview of the next word without affecting the learning queue.
+func (a *API) PeekNextWord(c *gin.Context) {
+	userIDClaim, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "未授权"})
+		return
+	}
+
+	userID, ok := userIDClaim.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format in token"})
+		return
+	}
+
+	source := c.Query("source")
+
+	// 调用与GetNextWord相同的逻辑，但不标记为已学习
+	meaning, err := srs.PeekNextWordForReview(c.Request.Context(), a.DB, userID, source)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// 如果没有下一个单词，返回一个友好的消息
+			c.JSON(http.StatusOK, gin.H{"message": "当前没有更多单词了"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法获取下一个单词: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, meaning)
+}
+
 // ReviewWord updates the user's progress on a word.
 func (a *API) ReviewWord(c *gin.Context) {
 	userIDClaim, exists := c.Get("userID")

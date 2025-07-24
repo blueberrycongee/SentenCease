@@ -21,20 +21,44 @@ import (
 // It prioritizes words that are due for review. If no words are due, it returns a new, never-seen word.
 // If a source is provided, it filters words from that source.
 func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.MeaningForReview, error) {
-	var err error
-	// 1. Check for a daily plan first
-	meaning, err := getNextWordFromDailyPlan(ctx, db, userID)
-	if err == nil && meaning != nil {
-		log.Printf("Found next word from daily plan for user %s", userID)
-		return meaning, nil
-	}
-	if err != nil && !errors.Is(err, database.ErrNotFound) {
-		log.Printf("Error fetching from daily plan: %v", err)
-		// Don't return, fall back to the old logic
+	// 1. 检查用户是否有当日计划
+	hasDailyPlan, err := checkDailyPlanExists(ctx, db, userID)
+	if err != nil {
+		log.Printf("Error checking if daily plan exists: %v", err)
+		// 继续执行，假设没有每日计划
 	}
 
-	// 2. Fallback to the original logic if no daily plan or plan is empty
-	log.Printf("No word from daily plan, falling back to original logic for user %s", userID)
+	// 2. 如果有当日计划，检查是否已完成全部单词
+	if hasDailyPlan {
+		completed, total, err := getDailyPlanProgress(ctx, db, userID)
+		if err != nil {
+			log.Printf("Error getting daily plan progress: %v", err)
+			// 继续执行，假设计划未完成
+		} else if completed >= total && total > 0 {
+			// 如果当日计划单词已全部完成，直接返回NotFound
+			log.Printf("User %s has completed their daily plan (%d/%d words)", userID, completed, total)
+			return nil, database.ErrNotFound
+		}
+
+		// 3. 如果有当日计划且未全部完成，从计划中获取单词
+		meaning, err := getNextWordFromDailyPlan(ctx, db, userID)
+		if err == nil && meaning != nil {
+			log.Printf("Found next word from daily plan for user %s", userID)
+			return meaning, nil
+		}
+		if err != nil && !errors.Is(err, database.ErrNotFound) {
+			log.Printf("Error fetching from daily plan: %v", err)
+			// 如果有其他错误，继续尝试获取单词
+		} else {
+			// 如果是NotFound错误（即所有单词已学习完毕），直接返回
+			log.Printf("No more words in daily plan for user %s", userID)
+			return nil, database.ErrNotFound
+		}
+	}
+
+	// 4. 回退到原始逻辑（仅在没有每日计划时）
+	log.Printf("No daily plan found for user %s, falling back to original logic", userID)
+
 	// Base query
 	query := `
 		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
@@ -71,15 +95,13 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			// This now correctly means the user has learned all words.
 			return nil, database.ErrNotFound
 		}
-		// A real database error occurred.
 		return nil, err
 	}
 
-	log.Printf("Retrieved meaning: ID=%d, WordID=%d, PartOfSpeech=%s, Definition=%s, Lemma=%s",
-		m.ID, m.WordID, m.PartOfSpeech, m.Definition, m.Lemma)
+	log.Printf("Retrieved meaning from general pool: ID=%d, WordID=%d, Lemma=%s",
+		m.ID, m.WordID, m.Lemma)
 
 	return processMeaningForReview(&m), nil
 }
@@ -92,20 +114,26 @@ func getNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uuid
 			WHERE user_id = $1 AND created_at >= current_date
 			ORDER BY created_at DESC
 			LIMIT 1
+		),
+		reviewed_words AS (
+			SELECT dpw.meaning_id 
+			FROM daily_plan_words dpw
+			JOIN user_progress up ON dpw.meaning_id = up.meaning_id AND up.user_id = $1
+			WHERE dpw.plan_id = (SELECT id FROM latest_plan)
+			AND up.last_reviewed_at >= current_date
 		)
 		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
 		FROM meanings m
 		JOIN words w ON m.word_id = w.id
 		JOIN daily_plan_words dpw ON m.id = dpw.meaning_id
-		LEFT JOIN user_progress up ON m.id = up.meaning_id AND up.user_id = $1
+		LEFT JOIN reviewed_words rw ON m.id = rw.meaning_id
 		WHERE dpw.plan_id = (SELECT id FROM latest_plan)
-		  AND (up.user_id IS NULL OR up.next_review_at <= $2)
-		ORDER BY up.next_review_at ASC NULLS LAST, random()
+		  AND rw.meaning_id IS NULL
+		ORDER BY m.id
 		LIMIT 1;
 	`
-	args := []interface{}{userID, time.Now()}
 
-	row := db.QueryRow(ctx, query, args...)
+	row := db.QueryRow(ctx, query, userID)
 
 	var m models.Meaning
 	err := row.Scan(
@@ -305,4 +333,67 @@ func extractPartOfSpeech(definition string) string {
 	}
 
 	return ""
+}
+
+// checkDailyPlanExists 检查用户是否有当日学习计划
+func checkDailyPlanExists(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (bool, error) {
+	query := `
+		SELECT EXISTS(
+			SELECT 1 FROM daily_plans 
+			WHERE user_id = $1 AND created_at >= current_date
+		)
+	`
+
+	var exists bool
+	err := db.QueryRow(ctx, query, userID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+// getDailyPlanProgress 获取当日计划的进度
+func getDailyPlanProgress(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (int, int, error) {
+	// 获取今日计划中的单词总数
+	totalQuery := `
+		WITH latest_plan AS (
+			SELECT id FROM daily_plans
+			WHERE user_id = $1 AND created_at >= current_date
+			ORDER BY created_at DESC
+			LIMIT 1
+		)
+		SELECT COUNT(*) AS total_words
+		FROM daily_plan_words
+		WHERE plan_id = (SELECT id FROM latest_plan)
+	`
+
+	var totalWords int
+	err := db.QueryRow(ctx, totalQuery, userID).Scan(&totalWords)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	// 获取今日已完成的单词数量
+	completedQuery := `
+		WITH latest_plan AS (
+			SELECT id FROM daily_plans
+			WHERE user_id = $1 AND created_at >= current_date
+			ORDER BY created_at DESC
+			LIMIT 1
+		)
+		SELECT COUNT(*) AS completed_words
+		FROM daily_plan_words dpw
+		JOIN user_progress up ON dpw.meaning_id = up.meaning_id AND up.user_id = $1
+		WHERE dpw.plan_id = (SELECT id FROM latest_plan)
+		  AND up.last_reviewed_at >= current_date
+	`
+
+	var completedWords int
+	err = db.QueryRow(ctx, completedQuery, userID).Scan(&completedWords)
+	if err != nil {
+		return 0, 0, err
+	}
+
+	return completedWords, totalWords, nil
 }

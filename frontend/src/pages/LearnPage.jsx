@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import Spinner from '../components/Spinner';
 import Button from '../components/Button';
@@ -11,6 +12,7 @@ const LearnPage = () => {
   const [isRevealed, setIsRevealed] = useState(false);
   const [isInteractable, setIsInteractable] = useState(false);
   const [progress, setProgress] = useState({ completed: 0, total: 0 });
+  const navigate = useNavigate();
 
   const fetchNextWord = useCallback(async () => {
     setIsRevealed(false);
@@ -138,15 +140,41 @@ const LearnPage = () => {
   // 进度条组件
   const ProgressBar = ({ completed, total }) => {
     const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+    let statusText = "开始学习";
+    let barColor = "bg-blue-600";
+    
+    if (completed > 0) {
+      if (completed === total) {
+        statusText = "学习完成";
+        barColor = "bg-green-600";
+      } else if (completed / total >= 0.8) {
+        statusText = "即将完成";
+        barColor = "bg-green-500";
+      } else if (completed / total >= 0.5) {
+        statusText = "努力中";
+        barColor = "bg-blue-500";
+      } else {
+        statusText = "继续加油";
+        barColor = "bg-blue-600";
+      }
+    }
     
     return (
-      <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
-        <div 
-          className="bg-blue-600 h-4 rounded-full transition-all duration-300 ease-in-out"
-          style={{ width: `${percentage}%` }}
-        ></div>
-        <div className="text-sm text-gray-600 mt-1">
-          已完成: {completed} / {total} 单词 ({percentage}%)
+      <div className="w-full">
+        <div className="flex justify-between items-center mb-1">
+          <div className="text-sm font-semibold text-gray-700">今日学习进度</div>
+          <div className="text-sm text-gray-600">{statusText}</div>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+          <div 
+            className={`${barColor} h-4 rounded-full transition-all duration-300 ease-in-out`}
+            style={{ width: `${percentage}%` }}
+          ></div>
+        </div>
+        <div className="flex justify-between text-sm text-gray-600">
+          <span>已完成: {completed} 单词</span>
+          <span>{percentage}%</span>
+          <span>总计: {total} 单词</span>
         </div>
       </div>
     );
@@ -176,16 +204,39 @@ const LearnPage = () => {
     if (meaning && meaning.message) {
       return (
         <div className="text-center bg-white p-10 rounded-2xl shadow-lg">
-          <h2 className="text-3xl font-bold text-blue-600">{meaning.message}</h2>
-          <p className="mt-4 text-lg text-gray-600">太棒了！请继续保持！</p>
+          <h2 className="text-3xl font-bold text-blue-600">今日学习完成！</h2>
+          <p className="mt-4 text-lg text-gray-600">
+            恭喜您已经完成了今天的单词学习计划！
+          </p>
+          <div className="mt-6 flex justify-center space-x-4">
+            <Button 
+              onClick={() => navigate('/select-words')} 
+              variant="primary" 
+              className="px-6 py-3 text-lg"
+            >
+              添加更多单词
+            </Button>
+          </div>
         </div>
       );
     }
 
     if (!meaning) {
       return (
-        <div className="text-center text-gray-500">
-          当前没有需要学习的词汇。
+        <div className="text-center bg-white p-10 rounded-2xl shadow-lg">
+          <h2 className="text-3xl font-bold text-blue-600">今日学习完成！</h2>
+          <p className="mt-4 text-lg text-gray-600">
+            您已经学完了今天计划的所有单词，太棒了！
+          </p>
+          <div className="mt-6 flex justify-center space-x-4">
+            <Button 
+              onClick={() => navigate('/select-words')} 
+              variant="primary" 
+              className="px-6 py-3 text-lg"
+            >
+              添加更多单词
+            </Button>
+          </div>
         </div>
       );
     }

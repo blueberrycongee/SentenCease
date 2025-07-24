@@ -106,7 +106,7 @@ func (a *API) GetNextWord(c *gin.Context) {
 
 	source := c.Query("source") // Get source from query parameter
 
-	meaning, err := srs.GetNextWordForReview(c.Request.Context(), a.DB, userID, source)
+	wordCard, err := srs.GetNextWordForReview(c.Request.Context(), a.DB, userID, source)
 	if err != nil {
 		if errors.Is(err, database.ErrNotFound) {
 			c.JSON(http.StatusOK, gin.H{"message": "Congratulations! You have learned all available words."})
@@ -117,7 +117,7 @@ func (a *API) GetNextWord(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, meaning)
+	c.JSON(http.StatusOK, wordCard)
 }
 
 // PeekNextWord fetches a preview of the next word without affecting the learning queue.
@@ -136,11 +136,9 @@ func (a *API) PeekNextWord(c *gin.Context) {
 
 	source := c.Query("source")
 
-	// 调用与GetNextWord相同的逻辑，但不标记为已学习
-	meaning, err := srs.PeekNextWordForReview(c.Request.Context(), a.DB, userID, source)
+	wordCard, err := srs.PeekNextWordForReview(c.Request.Context(), a.DB, userID, source)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			// 如果没有下一个单词，返回一个友好的消息
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, database.ErrNotFound) {
 			c.JSON(http.StatusOK, gin.H{"message": "当前没有更多单词了"})
 			return
 		}
@@ -148,7 +146,7 @@ func (a *API) PeekNextWord(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, meaning)
+	c.JSON(http.StatusOK, wordCard)
 }
 
 // ReviewWord updates the user's progress on a word.

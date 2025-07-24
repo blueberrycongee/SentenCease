@@ -112,12 +112,17 @@ func (s *Seeder) LoadWordsFromDirectory(path, source string) ([]models.Word, []m
 					wordMap[lemma] = struct{}{}
 				}
 
-				for _, trans := range sw.Translations {
+				for i, trans := range sw.Translations {
 					var exampleSentence, exampleTranslation string
-					// Use the first available sentence as the example.
+					// Use the corresponding sentence for the translation.
+					// If there are fewer sentences than translations, reuse the last sentence.
 					if len(sw.Sentences) > 0 {
-						exampleSentence = sw.Sentences[0].Sentence
-						exampleTranslation = sw.Sentences[0].Translation
+						sentenceIndex := i
+						if i >= len(sw.Sentences) {
+							sentenceIndex = len(sw.Sentences) - 1
+						}
+						exampleSentence = sw.Sentences[sentenceIndex].Sentence
+						exampleTranslation = sw.Sentences[sentenceIndex].Translation
 					}
 
 					meaning := models.Meaning{

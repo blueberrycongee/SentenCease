@@ -56,8 +56,8 @@ func main() {
 		authRequired := v1.Group("/")
 		authRequired.Use(api.AuthMiddleware(cfg.JWTSecretKey))
 		{
-			authRequired.GET("/learn/next", apiHandler.GetNextWord)
-			authRequired.GET("/learn/peek", apiHandler.PeekNextWord)
+			authRequired.GET("/learn/next-word", apiHandler.GetNextWord)
+			authRequired.GET("/learn/peek-next-word", apiHandler.PeekNextWord)
 			authRequired.POST("/learn/review", apiHandler.ReviewWord)
 			authRequired.GET("/learn/progress", apiHandler.GetLearningProgress)
 			authRequired.GET("/user/stats", apiHandler.GetUserStats)

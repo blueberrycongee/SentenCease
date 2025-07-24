@@ -17,79 +17,65 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// GetNextWordForReview finds the next meaning for a user to review.
-// This marks the word as being shown to the user.
-func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.MeaningForReview, error) {
-	// 1. 检查用户是否有当日计划
+// GetNextWordForReview finds the next word for a user to review, returning a full WordReviewCard.
+func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.WordReviewCard, error) {
+	// 1. Check for a daily plan.
 	hasDailyPlan, err := checkDailyPlanExists(ctx, db, userID)
 	if err != nil {
 		log.Printf("Error checking if daily plan exists: %v", err)
-		// 继续执行，假设没有每日计划
 	}
 
-	// 2. 如果有当日计划，检查是否已完成全部单词
+	// 2. If a daily plan exists, try to get the next word from it.
 	if hasDailyPlan {
 		completed, total, err := getDailyPlanProgress(ctx, db, userID)
 		if err != nil {
 			log.Printf("Error getting daily plan progress: %v", err)
-			// 继续执行，假设计划未完成
 		} else if completed >= total && total > 0 {
-			// 如果当日计划单词已全部完成，直接返回NotFound
 			log.Printf("User %s has completed their daily plan (%d/%d words)", userID, completed, total)
 			return nil, database.ErrNotFound
 		}
 
-		// 3. 如果有当日计划且未全部完成，从计划中获取单词
-		meaning, err := getNextWordFromDailyPlan(ctx, db, userID)
-		if err == nil && meaning != nil {
+		wordCard, err := getNextWordFromDailyPlan(ctx, db, userID)
+		if err == nil && wordCard != nil {
 			log.Printf("Found next word from daily plan for user %s", userID)
-			return meaning, nil
+			return wordCard, nil
 		}
 		if err != nil && !errors.Is(err, database.ErrNotFound) {
 			log.Printf("Error fetching from daily plan: %v", err)
-			// 如果有其他错误，继续尝试获取单词
-		} else {
-			// 如果是NotFound错误（即所有单词已学习完毕），直接返回
+		} else if errors.Is(err, database.ErrNotFound) {
 			log.Printf("No more words in daily plan for user %s", userID)
 			return nil, database.ErrNotFound
 		}
 	}
 
-	// 4. 回退到原始逻辑（仅在没有每日计划时）
+	// 3. Fallback to the original logic if no daily plan or plan is empty.
 	log.Printf("No daily plan found for user %s, falling back to original logic", userID)
 
-	// Base query
-	query := `
+	// Step 1: Find a contextual meaning to review.
+	contextualMeaningQuery := `
 		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
 		FROM meanings m
 		JOIN words w ON m.word_id = w.id
 		LEFT JOIN user_progress up ON m.id = up.meaning_id AND up.user_id = $1
+		WHERE ((up.user_id = $1 AND up.next_review_at <= $2) OR up.user_id IS NULL)
 	`
 	args := []interface{}{userID, time.Now()}
 
-	// Dynamically build the WHERE clause
-	var whereClauses []string
-	whereClauses = append(whereClauses, "( (up.user_id = $1 AND up.next_review_at <= $2) OR (up.user_id IS NULL) )")
-
 	if source != "" {
-		whereClauses = append(whereClauses, "w.source = $3")
+		contextualMeaningQuery += " AND w.source = $3"
 		args = append(args, source)
 	}
+	contextualMeaningQuery += " ORDER BY up.next_review_at ASC NULLS LAST, random() LIMIT 1;"
 
-	query += " WHERE " + strings.Join(whereClauses, " AND ")
-	query += " ORDER BY up.next_review_at ASC NULLS LAST, random() LIMIT 1;"
-
-	row := db.QueryRow(ctx, query, args...)
-
-	var m models.Meaning
-	err = row.Scan(
-		&m.ID,
-		&m.WordID,
-		&m.PartOfSpeech,
-		&m.Definition,
-		&m.ExampleSentence,
-		&m.ExampleSentenceTranslation,
-		&m.Lemma,
+	var contextualMeaning models.Meaning
+	err = db.QueryRow(ctx, contextualMeaningQuery, args...).Scan(
+		&contextualMeaning.ID,
+		&contextualMeaning.WordID,
+		&contextualMeaning.PartOfSpeech,
+		&contextualMeaning.Definition,
+		&contextualMeaning.ExampleSentence,
+		&contextualMeaning.ExampleSentenceTranslation,
+		&contextualMeaning.Lemma,
 	)
 
 	if err != nil {
@@ -99,29 +85,27 @@ func GetNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUI
 		return nil, err
 	}
 
-	log.Printf("Retrieved meaning from general pool: ID=%d, WordID=%d, Lemma=%s",
-		m.ID, m.WordID, m.Lemma)
-
-	return processMeaningForReview(&m), nil
+	// Step 2: Fetch all meanings for the determined word_id.
+	return buildWordReviewCard(ctx, db, &contextualMeaning)
 }
 
-// PeekNextWordForReview 预览下一个待学习的单词，但不标记为已展示给用户
-// 这个函数与GetNextWordForReview逻辑相似，但不会修改数据库状态
-func PeekNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.MeaningForReview, error) {
-	// 优先从每日计划中获取下一个单词
-	meaning, err := peekNextWordFromDailyPlan(ctx, db, userID)
+// PeekNextWordForReview previews the next word without marking it as shown.
+func PeekNextWordForReview(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID, source string) (*models.WordReviewCard, error) {
+	// This function should ideally mirror the logic of GetNextWordForReview but without state changes.
+	// For now, it will prioritize the daily plan.
+	wordCard, err := peekNextWordFromDailyPlan(ctx, db, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, database.ErrNotFound
 		}
 		return nil, err
 	}
-
-	return meaning, nil
+	return wordCard, nil
 }
 
-// getNextWordFromDailyPlan tries to fetch the next word from the user's most recent daily plan.
-func getNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (*models.MeaningForReview, error) {
+// getNextWordFromDailyPlan fetches the next word from the user's daily plan.
+func getNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (*models.WordReviewCard, error) {
+	// This query finds the next un-reviewed meaning from the latest daily plan.
 	query := `
 		WITH latest_plan AS (
 			SELECT id FROM daily_plans
@@ -146,50 +130,9 @@ func getNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uuid
 		ORDER BY m.id
 		LIMIT 1;
 	`
-
-	row := db.QueryRow(ctx, query, userID)
-
-	var m models.Meaning
-	err := row.Scan(
-		&m.ID, &m.WordID, &m.PartOfSpeech, &m.Definition, &m.ExampleSentence, &m.ExampleSentenceTranslation, &m.Lemma,
-	)
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, database.ErrNotFound // No words in plan or all reviewed
-		}
-		return nil, err
-	}
-	return processMeaningForReview(&m), nil
-}
-
-// peekNextWordFromDailyPlan 查看用户最近的每日计划中的下一个单词，但不更新状态
-func peekNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (*models.MeaningForReview, error) {
-	// 查询与getNextWordFromDailyPlan相似，但不包括更新状态的逻辑
-	var meaning models.MeaningForReview
-
-	query := `
-		SELECT m.id as meaning_id, w.lemma as word, m.definition, m.part_of_speech, 
-			   es.text as example_sentence, es.translation as example_sentence_translation
-		FROM daily_plan_items dpi
-		JOIN daily_plans dp ON dp.id = dpi.daily_plan_id
-		JOIN meanings m ON m.id = dpi.meaning_id
-		JOIN words w ON w.id = m.word_id
-		LEFT JOIN example_sentences es ON es.meaning_id = m.id AND es.is_primary = true
-		WHERE dp.user_id = $1 
-		AND dp.created_at = (SELECT MAX(created_at) FROM daily_plans WHERE user_id = $1)
-		AND dpi.status = 'pending'
-		ORDER BY dpi.order ASC
-		LIMIT 1
-	`
-
+	var contextualMeaning models.Meaning
 	err := db.QueryRow(ctx, query, userID).Scan(
-		&meaning.MeaningID,
-		&meaning.Word,
-		&meaning.Definition,
-		&meaning.PartOfSpeech,
-		&meaning.ExampleSentence,
-		&meaning.ExampleSentenceTranslation,
+		&contextualMeaning.ID, &contextualMeaning.WordID, &contextualMeaning.PartOfSpeech, &contextualMeaning.Definition, &contextualMeaning.ExampleSentence, &contextualMeaning.ExampleSentenceTranslation, &contextualMeaning.Lemma,
 	)
 
 	if err != nil {
@@ -198,40 +141,87 @@ func peekNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uui
 		}
 		return nil, err
 	}
-
-	return &meaning, nil
+	return buildWordReviewCard(ctx, db, &contextualMeaning)
 }
 
-// processMeaningForReview takes a Meaning object and enriches it for review.
-func processMeaningForReview(m *models.Meaning) *models.MeaningForReview {
-	log.Printf("Processing meaning: ID=%d, WordID=%d, PartOfSpeech=%s, Definition=%s, Lemma=%s",
-		m.ID, m.WordID, m.PartOfSpeech, m.Definition, m.Lemma)
-	wordInSentence := findWordInSentence(m.ExampleSentence, m.Lemma)
-	// 检查词性是否为空或不是中文，如果是则尝试修复
-	if m.PartOfSpeech == "" || !containsChineseCharacters(m.PartOfSpeech) {
-		// 尝试从定义中提取词性
-		pos := extractPartOfSpeech(m.Definition)
-		if pos != "" {
-			m.PartOfSpeech = pos
-		} else {
-			// 如果无法提取，使用默认词性
-			m.PartOfSpeech = ""
+// peekNextWordFromDailyPlan peeks at the next word in the daily plan without updates.
+func peekNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uuid.UUID) (*models.WordReviewCard, error) {
+	// This logic needs to be adapted to fetch a contextual meaning first, then build the card.
+	// For simplicity, we'll find the next pending item and use it as context.
+	query := `
+		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
+		FROM daily_plan_items dpi
+		JOIN daily_plans dp ON dp.id = dpi.daily_plan_id
+		JOIN meanings m ON m.id = dpi.meaning_id
+		JOIN words w ON w.id = m.word_id
+		WHERE dp.user_id = $1 
+		AND dp.created_at = (SELECT MAX(created_at) FROM daily_plans WHERE user_id = $1)
+		AND dpi.status = 'pending'
+		ORDER BY dpi.order ASC
+		LIMIT 1
+	`
+	var contextualMeaning models.Meaning
+	err := db.QueryRow(ctx, query, userID).Scan(
+		&contextualMeaning.ID, &contextualMeaning.WordID, &contextualMeaning.PartOfSpeech, &contextualMeaning.Definition, &contextualMeaning.ExampleSentence, &contextualMeaning.ExampleSentenceTranslation, &contextualMeaning.Lemma,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, database.ErrNotFound
 		}
+		return nil, err
 	}
-	// 检查定义是否为英文而不是中文，如果是则尝试将其标记为需要修复
-	if !containsChineseCharacters(m.Definition) {
-		m.Definition = "[需要翻译] " + m.Definition
+	return buildWordReviewCard(ctx, db, &contextualMeaning)
+}
+
+// buildWordReviewCard constructs a WordReviewCard from a contextual meaning.
+func buildWordReviewCard(ctx context.Context, db *pgxpool.Pool, contextualMeaning *models.Meaning) (*models.WordReviewCard, error) {
+	// Query for all meanings of the word.
+	allMeaningsQuery := `
+		SELECT id, part_of_speech, definition
+		FROM meanings
+		WHERE word_id = $1
+		ORDER BY id;
+	`
+	rows, err := db.Query(ctx, allMeaningsQuery, contextualMeaning.WordID)
+	if err != nil {
+		log.Printf("Error fetching all meanings for word_id %d: %v", contextualMeaning.WordID, err)
+		return nil, err
 	}
-	reviewMeaning := &models.MeaningForReview{
-		MeaningID:                  m.ID,
-		PartOfSpeech:               m.PartOfSpeech,
-		Definition:                 m.Definition,
-		ExampleSentence:            m.ExampleSentence,
-		ExampleSentenceTranslation: m.ExampleSentenceTranslation,
-		Lemma:                      m.Lemma,
-		Word:                       wordInSentence,
+	defer rows.Close()
+
+	var allMeanings []models.MeaningInfo
+	for rows.Next() {
+		var meaningInfo models.MeaningInfo
+		if err := rows.Scan(&meaningInfo.MeaningID, &meaningInfo.PartOfSpeech, &meaningInfo.Definition); err != nil {
+			return nil, err
+		}
+		allMeanings = append(allMeanings, meaningInfo)
 	}
-	return reviewMeaning
+
+	if len(allMeanings) == 0 {
+		log.Printf("No meanings found for word_id %d, which should not happen.", contextualMeaning.WordID)
+		// Fallback: create a MeaningInfo from the contextual meaning
+		allMeanings = append(allMeanings, models.MeaningInfo{
+			MeaningID:    contextualMeaning.ID,
+			PartOfSpeech: contextualMeaning.PartOfSpeech,
+			Definition:   contextualMeaning.Definition,
+		})
+	}
+
+	wordInSentence := findWordInSentence(contextualMeaning.ExampleSentence, contextualMeaning.Lemma)
+
+	reviewCard := &models.WordReviewCard{
+		ContextualMeaningID:        contextualMeaning.ID,
+		WordID:                     contextualMeaning.WordID,
+		Lemma:                      contextualMeaning.Lemma,
+		WordInSentence:             wordInSentence,
+		ExampleSentence:            contextualMeaning.ExampleSentence,
+		ExampleSentenceTranslation: contextualMeaning.ExampleSentenceTranslation,
+		AllMeanings:                allMeanings,
+	}
+
+	return reviewCard, nil
 }
 
 // UpdateProgress updates a user's progress for a specific meaning based on their self-assessment.

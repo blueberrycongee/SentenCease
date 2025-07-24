@@ -73,13 +73,21 @@ type ReviewRequest struct {
 	UserChoice string `json:"userChoice" binding:"required,oneof=认识 模糊 不认识"`
 }
 
-// MeaningForReview is the data structure sent to the frontend for a learning session.
-type MeaningForReview struct {
-	MeaningID                  int     `json:"meaningId"`
-	PartOfSpeech               string  `json:"partOfSpeech"`
-	Definition                 string  `json:"definition"`
-	ExampleSentence            string  `json:"exampleSentence"`
-	ExampleSentenceTranslation *string `json:"exampleSentenceTranslation,omitempty"`
-	Lemma                      string  `json:"lemma"`
-	Word                       string  `json:"word"` // The actual word form in the sentence
+// MeaningInfo represents a single, summarized meaning of a word.
+type MeaningInfo struct {
+	MeaningID    int    `json:"meaningId"`
+	PartOfSpeech string `json:"partOfSpeech"`
+	Definition   string `json:"definition"`
+}
+
+// WordReviewCard is the data structure sent to the frontend for a learning session.
+// It contains the word, a context sentence, and all its associated meanings.
+type WordReviewCard struct {
+	ContextualMeaningID        int           `json:"contextualMeaningId"` // The specific meaning that triggered the review.
+	WordID                     int           `json:"wordId"`
+	Lemma                      string        `json:"lemma"`
+	WordInSentence             string        `json:"wordInSentence"` // The actual word form in the sentence.
+	ExampleSentence            string        `json:"exampleSentence"`
+	ExampleSentenceTranslation *string       `json:"exampleSentenceTranslation,omitempty"`
+	AllMeanings                []MeaningInfo `json:"allMeanings"`
 }

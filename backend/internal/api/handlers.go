@@ -420,7 +420,7 @@ func (a *API) GetLearningProgress(c *gin.Context) {
 		return
 	}
 
-	// 获取用户当日学习计划
+	// 获取用户今日学习计划中的单词总数
 	query := `
 		WITH latest_plan AS (
 			SELECT id FROM daily_plans
@@ -444,7 +444,7 @@ func (a *API) GetLearningProgress(c *gin.Context) {
 		return
 	}
 
-	// 获取已完成的单词数量
+	// 获取今日已完成的单词数量
 	completedQuery := `
 		WITH latest_plan AS (
 			SELECT id FROM daily_plans
@@ -467,4 +467,45 @@ func (a *API) GetLearningProgress(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"total": totalWords, "completed": completedWords})
+}
+
+// GetUserStats fetches the user's email and statistics about words learned
+func (a *API) GetUserStats(c *gin.Context) {
+	userIDClaim, exists := c.Get("userID")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+		return
+	}
+
+	userID, ok := userIDClaim.(uuid.UUID)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format in token"})
+		return
+	}
+
+	// 获取用户邮箱
+	var email string
+	err := a.DB.QueryRow(c.Request.Context(), "SELECT email FROM users WHERE id = $1", userID).Scan(&email)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get user information"})
+		return
+	}
+
+	// 获取用户已学习过的单词数量（至少点击过一次按钮）
+	var learnedWordsCount int
+	countQuery := `
+		SELECT COUNT(DISTINCT meaning_id) 
+		FROM user_progress 
+		WHERE user_id = $1
+	`
+	err = a.DB.QueryRow(c.Request.Context(), countQuery, userID).Scan(&learnedWordsCount)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get learned words count"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"email":             email,
+		"learnedWordsCount": learnedWordsCount,
+	})
 }

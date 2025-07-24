@@ -47,4 +47,15 @@ api.getLearningProgress = async () => {
   }
 };
 
+// 获取用户统计信息API方法
+api.getUserStats = async () => {
+  try {
+    const response = await api.get('/user/stats');
+    return response.data;
+  } catch (error) {
+    console.error('获取用户统计信息失败:', error);
+    throw error;
+  }
+};
+
 export default api; 

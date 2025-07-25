@@ -27,11 +27,12 @@ services:
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile.frontend
-    restart: always
+      context: .
+      dockerfile: frontend/Dockerfile.frontend
+      args:
+        VITE_API_URL: http://localhost:8080/api/v1
     ports:
-      - "5173:5173"
+      - "5173:80"
     volumes:
       - ./frontend:/app
       - /app/node_modules

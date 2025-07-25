@@ -5,7 +5,8 @@ FROM golang:1.23-alpine AS builder
 WORKDIR /app
 
 # Install git
-RUN apk add --no-cache git
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories && \
+    apk add --no-cache git
 
 # Copy the Go module files
 COPY backend/go.mod ./

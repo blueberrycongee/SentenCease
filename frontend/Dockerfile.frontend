@@ -1,19 +1,27 @@
 # Stage 1: Build the React application
-FROM node:20-alpine
-
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# Copy only the frontend's package.json files
+COPY frontend/package*.json ./
 
-# Install dependencies
+# Install frontend dependencies
 RUN npm install
 
-# Copy the rest of the application's source code
-COPY . .
+# Copy the rest of the frontend source code
+COPY frontend/ .
 
-# Expose port 5173 for Vite dev server
-EXPOSE 5173
+# Add the build argument and set the environment variable
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
 
-# Start the Vite dev server
-CMD ["npm", "run", "dev", "--", "--host"] 
+# Run the build script
+RUN npm run build
+
+# Stage 2: Serve the application from a lightweight server
+FROM nginx:stable-alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+# You might need a custom nginx config to handle SPA routing
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"] 

@@ -15,15 +15,18 @@ vendor/
 /backend/go.sum
 
 # Node
-/frontend/node_modules
-/frontend/dist
+# Front-end
+/frontend/node_modules/
+/frontend/dist/
 /frontend/.vite/
-.npm
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-lerna-debug.log*
+
+# Tauri workspace
+Sentencease/node_modules/
+Sentencease/src-tauri/target/
+Sentencease/src-tauri/gen/
+# Android & Gradle build output
+Sentencease/src-tauri/gen/android/**/build/
+Sentencease/src-tauri/gen/android/.gradle/
 
 # local env files
 .env*.local
@@ -47,5 +50,5 @@ lerna-debug.log*
 *.sln
 *.sw?
 
-.env
+# Remove database volumes
 .postgres-data/ 

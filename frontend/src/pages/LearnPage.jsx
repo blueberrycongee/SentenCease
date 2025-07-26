@@ -2,8 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import offlineStorage from '../services/offlineStorage';
+import useDeviceDetect from '../hooks/useDeviceDetect';
 import Spinner from '../components/Spinner';
 import Button from '../components/Button';
+import SwipeCard from '../components/SwipeCard';
+import SwipeTutorial from '../components/SwipeTutorial';
 
 const LearnPage = () => {
   const [wordCard, setWordCard] = useState(null);
@@ -20,6 +23,8 @@ const LearnPage = () => {
   const [direction, setDirection] = useState('');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [hasPendingSync, setHasPendingSync] = useState(false);
+  const [tutorialDismissed, setTutorialDismissed] = useState(false);
+  const { isMobile, isTouchDevice } = useDeviceDetect();
   const navigate = useNavigate();
 
   // 监听在线状态变化
@@ -362,8 +367,12 @@ const LearnPage = () => {
             </button>
           )}
           
-          <div 
+          <SwipeCard
             className={`bg-white rounded-2xl shadow-xl p-10 min-h-[36rem] w-full max-w-xl mx-6 cursor-pointer transform z-10 transition-all duration-500 ease-in-out hover:shadow-2xl ${getCardAnimationClass()}`}
+            onSwipeLeft={() => isRevealed && isInteractable && !isSubmitting && handleReview('不认识')}
+            onSwipeRight={() => isRevealed && isInteractable && !isSubmitting && handleReview('认识')}
+            onSwipeUp={() => isRevealed && isInteractable && !isSubmitting && handleReview('模糊')}
+            disabled={!isRevealed || !isInteractable || isSubmitting}
             onClick={() => !isRevealed && setIsRevealed(true)}
           >
             {/* 离线模式指示器 */}
@@ -386,7 +395,7 @@ const LearnPage = () => {
               </div>
             )}
             
-            <div className="mb-8 text-center">
+            <div className="mb-8 text-center" onClick={() => !isRevealed && setIsRevealed(true)}>
               <p className="text-3xl text-gray-800 leading-relaxed">
                 {renderHighlightedSentence(wordCard.exampleSentence, wordCard.wordInSentence)}
               </p>
@@ -412,13 +421,13 @@ const LearnPage = () => {
                 </div>
               </div>
 
-              <div className="flex justify-center items-center gap-4">
+              <div className="flex justify-center items-center gap-4 mt-12">
                 <Button onClick={() => handleReview('不认识')} disabled={isSubmitting || !isInteractable} variant="danger" className="w-32 h-14 text-lg">不认识</Button>
                 <Button onClick={() => handleReview('模糊')} disabled={isSubmitting || !isInteractable} variant="warning" className="w-32 h-14 text-lg">模糊</Button>
                 <Button onClick={() => handleReview('认识')} disabled={isSubmitting || !isInteractable} variant="success" className="w-32 h-14 text-lg">认识</Button>
               </div>
             </div>
-          </div>
+          </SwipeCard>
           
           {nextWordCard && (
             <div 
@@ -442,6 +451,11 @@ const LearnPage = () => {
         </div>
         {renderContent()}
       </div>
+      
+      {/* 触摸设备上显示滑动教程 */}
+      {isTouchDevice && !tutorialDismissed && (
+        <SwipeTutorial onDismiss={() => setTutorialDismissed(true)} />
+      )}
     </div>
   );
 };

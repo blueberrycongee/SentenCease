@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import offlineStorage from '../services/offlineStorage';
 import Spinner from '../components/Spinner';
 import Button from '../components/Button';
 
@@ -17,7 +18,66 @@ const LearnPage = () => {
   const [history, setHistory] = useState([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [direction, setDirection] = useState('');
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [hasPendingSync, setHasPendingSync] = useState(false);
   const navigate = useNavigate();
+
+  // 监听在线状态变化
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncPendingReviews();
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // 同步待处理的评论
+  const syncPendingReviews = useCallback(async () => {
+    if (navigator.onLine) {
+      try {
+        const result = await api.syncPendingReviews();
+        if (result.synced > 0) {
+          setHasPendingSync(true);
+          setTimeout(() => setHasPendingSync(false), 3000);
+        }
+      } catch (err) {
+        console.error('同步评论失败:', err);
+      }
+    }
+  }, []);
+
+  // 第一次加载时尝试同步
+  useEffect(() => {
+    if (navigator.onLine) {
+      syncPendingReviews();
+    }
+  }, [syncPendingReviews]);
+
+  // 缓存单词用于离线学习
+  useEffect(() => {
+    const cacheWordsForOffline = async () => {
+      if (navigator.onLine) {
+        try {
+          await api.cacheWords(50); // 缓存50个单词
+        } catch (err) {
+          console.error('缓存单词失败:', err);
+        }
+      }
+    };
+    
+    cacheWordsForOffline();
+  }, []);
 
   // 获取下一个单词
   const fetchNextWord = useCallback(async () => {
@@ -27,6 +87,11 @@ const LearnPage = () => {
     setError('');
     try {
       const response = await api.get('/learn/next-word');
+      
+      // 如果在线，缓存这个单词用于离线使用
+      if (navigator.onLine && response.data && response.data.contextualMeaningId) {
+        offlineStorage.cacheWord(response.data);
+      }
       
       // 更新历史记录和卡片状态
       if (wordCard) {
@@ -88,7 +153,7 @@ const LearnPage = () => {
   // 获取学习进度
   const fetchProgress = async () => {
     try {
-      const { data } = await api.get('/learn/progress');
+      const data = await api.getLearningProgress();
       setProgress(data);
     } catch (err) {
       console.error('获取学习进度失败:', err);
@@ -123,6 +188,12 @@ const LearnPage = () => {
         userChoice,
       });
       
+      // 更新本地进度
+      const currentProgress = { ...progress };
+      currentProgress.completed += 1;
+      setProgress(currentProgress);
+      await offlineStorage.storeProgress(currentProgress);
+      
       setTimeout(() => {
         fetchNextWord();
         setIsAnimating(false);
@@ -134,7 +205,7 @@ const LearnPage = () => {
       setIsAnimating(false);
       setDirection('');
     }
-  }, [wordCard, isSubmitting, fetchNextWord]);
+  }, [wordCard, isSubmitting, fetchNextWord, progress]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -295,6 +366,26 @@ const LearnPage = () => {
             className={`bg-white rounded-2xl shadow-xl p-10 min-h-[36rem] w-full max-w-xl mx-6 cursor-pointer transform z-10 transition-all duration-500 ease-in-out hover:shadow-2xl ${getCardAnimationClass()}`}
             onClick={() => !isRevealed && setIsRevealed(true)}
           >
+            {/* 离线模式指示器 */}
+            {!isOnline && (
+              <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-lg mb-4 text-sm flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>离线模式 - 您的学习进度将在恢复连接后同步</span>
+              </div>
+            )}
+            
+            {/* 同步成功提示 */}
+            {isOnline && hasPendingSync && (
+              <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg mb-4 text-sm flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>离线学习数据已成功同步</span>
+              </div>
+            )}
+            
             <div className="mb-8 text-center">
               <p className="text-3xl text-gray-800 leading-relaxed">
                 {renderHighlightedSentence(wordCard.exampleSentence, wordCard.wordInSentence)}

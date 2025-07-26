@@ -1,0 +1,55 @@
+{
+  "name": "SentenCease - English Vocabulary Learning",
+  "short_name": "SentenCease",
+  "description": "Learn English vocabulary efficiently with spaced repetition",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F5F7",
+  "theme_color": "#0052cc",
+  "icons": [
+    {
+      "src": "pwa-assets/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "pwa-assets/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "pwa-assets/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "pwa-assets/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Start Learning",
+      "short_name": "Learn",
+      "description": "Start your vocabulary learning session",
+      "url": "/learn",
+      "icons": [{ "src": "pwa-assets/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Select Words",
+      "short_name": "Words",
+      "description": "Select vocabulary to learn",
+      "url": "/select-words",
+      "icons": [{ "src": "pwa-assets/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [],
+  "orientation": "portrait",
+  "categories": ["education", "learning", "languages"],
+  "lang": "en"
+} 

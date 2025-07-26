@@ -229,6 +229,11 @@ func (a *API) GetVocabSources(c *gin.Context) {
 		return
 	}
 
+	if sources == nil {
+		c.JSON(http.StatusOK, []string{})
+		return
+	}
+
 	c.JSON(http.StatusOK, sources)
 }
 

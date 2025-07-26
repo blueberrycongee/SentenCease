@@ -1,0 +1,17 @@
+# Use a lightweight base image
+FROM alpine:latest
+
+# Add certificates for making HTTPS requests
+RUN apk --no-cache add ca-certificates
+
+# Set the working directory
+WORKDIR /root/
+
+# Copy the pre-built binary from the local filesystem
+COPY backend/main .
+
+# Expose port 8080 to the outside world
+EXPOSE 8080
+
+# Command to run the executable
+CMD ["./main"] 

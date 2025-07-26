@@ -1,8 +1,9 @@
 # Use a lightweight base image
 FROM alpine:latest
 
-# Add certificates for making HTTPS requests
-RUN apk --no-cache add ca-certificates
+# Change apk repository to a faster mirror in China and then install certificates
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apk/repositories && \
+    apk --no-cache add ca-certificates
 
 # Set the working directory
 WORKDIR /root/

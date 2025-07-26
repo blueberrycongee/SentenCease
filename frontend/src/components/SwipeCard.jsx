@@ -7,7 +7,6 @@ const SwipeCard = ({
   onSwipeRight, 
   onSwipeUp,
   disabled = false,
-  enableSwipe = true,  // 添加enableSwipe属性，默认为true
   className = ''
 }) => {
   const cardRef = useRef(null);
@@ -19,8 +18,8 @@ const SwipeCard = ({
   });
   const [isDragging, setIsDragging] = useState(false);
   
-  // 使用自定义手势Hook，只在enableSwipe为true时注册滑动事件
-  const { swipeDirection, swipeProgress, isSwiping } = enableSwipe ? useSwipeGesture(cardRef, {
+  // 使用自定义手势Hook
+  const { swipeDirection, swipeProgress, isSwiping } = useSwipeGesture(cardRef, {
     onSwipeLeft: (details) => {
       if (disabled) return;
       // 向左滑（不认识）
@@ -43,11 +42,11 @@ const SwipeCard = ({
       });
     },
     threshold: 80
-  }) : { swipeDirection: null, swipeProgress: 0, isSwiping: false };
+  });
   
   // 当手势变化时更新卡片样式
   useEffect(() => {
-    if (disabled || !enableSwipe) return;
+    if (disabled) return;
     
     if (isSwiping && swipeDirection) {
       setIsDragging(true);
@@ -86,7 +85,7 @@ const SwipeCard = ({
         opacity: 1
       });
     }
-  }, [isSwiping, swipeDirection, swipeProgress, disabled, enableSwipe]);
+  }, [isSwiping, swipeDirection, swipeProgress, disabled]);
   
   // 动画退出
   const animateExit = (direction, onComplete) => {
@@ -152,15 +151,23 @@ const SwipeCard = ({
   
   const indicator = getIndicatorStyle();
   
+  // 阻止事件冒泡到页面
+  const preventPropagation = (e) => {
+    e.stopPropagation();
+  };
+  
   return (
     <div 
       ref={cardRef}
-      className={`relative select-none touch-manipulation ${isDragging ? 'z-10' : 'z-0'} ${className}`}
+      className={`relative select-none touch-manipulation swipe-card-container ${isDragging ? 'z-10' : 'z-0'} ${className}`}
       style={{
         transform: `translate(${transform.translateX}px, ${transform.translateY}px) rotate(${transform.rotate}deg)`,
         opacity: transform.opacity,
         transition: isDragging ? 'none' : 'all 0.3s ease'
       }}
+      onTouchStart={preventPropagation}
+      onTouchMove={preventPropagation}
+      onTouchEnd={preventPropagation}
     >
       {children}
       
@@ -171,8 +178,8 @@ const SwipeCard = ({
         </div>
       )}
       
-      {/* 滑动提示 - 仅在滑动功能启用且非拖动状态显示 */}
-      {enableSwipe && !isDragging && !disabled && (
+      {/* 滑动提示 - 仅在非拖动状态显示 */}
+      {!isDragging && !disabled && (
         <div className="absolute bottom-6 left-0 right-0 flex justify-center opacity-70">
           <div className="bg-gray-800/80 text-white text-xs py-1.5 px-3 rounded-full flex items-center space-x-2">
             <div className="flex flex-col items-center">

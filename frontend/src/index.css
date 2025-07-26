@@ -1,18 +1,43 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-@layer utilities {
-  .animate-fade-in {
-    animation: fadeIn 0.5s ease-in-out;
+/* 在移动设备上锁定页面滚动 */
+@media (max-width: 767px) {
+  html.mobile-lock,
+  body.mobile-lock {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
   }
 
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  /* 主内容容器样式 */
+  .mobile-main-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
+
+  /* 允许内容区域滚动（如果需要） */
+  .mobile-scroll-container {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch; /* 平滑滚动 */
+  }
+}
+
+/* SwipeCard 相关样式 */
+.swipe-card-container {
+  touch-action: none; /* 防止浏览器默认滚动行为 */
+}
+
+/* 解决iOS Safari弹性滚动问题 */
+body {
+  overscroll-behavior: none;
 }

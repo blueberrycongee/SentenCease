@@ -373,7 +373,6 @@ const LearnPage = () => {
             onSwipeRight={() => isRevealed && isInteractable && !isSubmitting && handleReview('认识')}
             onSwipeUp={() => isRevealed && isInteractable && !isSubmitting && handleReview('模糊')}
             disabled={!isRevealed || !isInteractable || isSubmitting}
-            enableSwipe={!isMobile} // 在移动设备上禁用滑动功能
             onClick={() => !isRevealed && setIsRevealed(true)}
           >
             {/* 离线模式指示器 */}
@@ -422,12 +421,12 @@ const LearnPage = () => {
                 </div>
               </div>
 
-              <div className={`flex justify-center items-center ${isMobile ? 'gap-3 mt-8' : 'gap-4 mt-12'}`}>
+              <div className={`flex justify-center items-center ${isMobile ? 'gap-2 mt-8' : 'gap-4 mt-12'}`}>
                 <Button 
                   onClick={() => handleReview('不认识')} 
                   disabled={isSubmitting || !isInteractable} 
                   variant="danger" 
-                  className={`${isMobile ? 'w-28 h-14 text-base' : 'w-32 h-14 text-lg'}`}
+                  className={`${isMobile ? 'w-24 h-12 text-base' : 'w-32 h-14 text-lg'}`}
                 >
                   不认识
                 </Button>
@@ -435,7 +434,7 @@ const LearnPage = () => {
                   onClick={() => handleReview('模糊')} 
                   disabled={isSubmitting || !isInteractable} 
                   variant="warning" 
-                  className={`${isMobile ? 'w-28 h-14 text-base' : 'w-32 h-14 text-lg'}`}
+                  className={`${isMobile ? 'w-24 h-12 text-base' : 'w-32 h-14 text-lg'}`}
                 >
                   模糊
                 </Button>
@@ -443,7 +442,7 @@ const LearnPage = () => {
                   onClick={() => handleReview('认识')} 
                   disabled={isSubmitting || !isInteractable} 
                   variant="success" 
-                  className={`${isMobile ? 'w-28 h-14 text-base' : 'w-32 h-14 text-lg'}`}
+                  className={`${isMobile ? 'w-24 h-12 text-base' : 'w-32 h-14 text-lg'}`}
                 >
                   认识
                 </Button>
@@ -466,16 +465,21 @@ const LearnPage = () => {
   };
 
   return (
-    <div className={`bg-[#F5F5F7] w-full min-h-screen flex items-center justify-center ${isMobile ? 'p-3' : 'p-8'} font-sans`}>
-      <div className="w-full mx-auto">
+    <div 
+      className={`bg-[#F5F5F7] w-full min-h-screen ${!isMobile ? 'flex items-center justify-center p-8' : ''} font-sans`}
+      style={isMobile ? { height: '100%', overflow: 'hidden' } : {}}
+    >
+      <div className="w-full mx-auto" style={isMobile ? { height: '100%' } : {}}>
         <div className={`bg-white ${isMobile ? 'p-3' : 'p-4'} rounded-xl shadow-md ${isMobile ? 'mb-4' : 'mb-6'} max-w-5xl mx-auto`}>
           <ProgressBar completed={progress.completed} total={progress.total} />
         </div>
-        {renderContent()}
+        <div className={isMobile ? 'h-[calc(100%-60px)]' : ''}>
+          {renderContent()}
+        </div>
       </div>
       
-      {/* 非移动设备上的触摸设备才显示滑动教程 */}
-      {isTouchDevice && !isMobile && !tutorialDismissed && (
+      {/* 触摸设备上显示滑动教程 */}
+      {isTouchDevice && !tutorialDismissed && (
         <SwipeTutorial onDismiss={() => setTutorialDismissed(true)} />
       )}
     </div>

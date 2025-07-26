@@ -4,6 +4,7 @@ import Header from './components/Header';
 import NetworkStatus from './components/NetworkStatus';
 import InstallPrompt from './components/InstallPrompt';
 import pwaService from './services/pwaService';
+import useDeviceDetect from './hooks/useDeviceDetect';
 import './App.css';
 
 function App() {
@@ -11,6 +12,23 @@ function App() {
   const noHeaderPaths = ['/login', '/register'];
   const showHeader = !noHeaderPaths.includes(location.pathname);
   const [updateAvailable, setUpdateAvailable] = useState(false);
+  const { isMobile } = useDeviceDetect();
+  
+  // 在移动设备上锁定页面滚动
+  useEffect(() => {
+    if (isMobile) {
+      document.documentElement.classList.add('mobile-lock');
+      document.body.classList.add('mobile-lock');
+    } else {
+      document.documentElement.classList.remove('mobile-lock');
+      document.body.classList.remove('mobile-lock');
+    }
+    
+    return () => {
+      document.documentElement.classList.remove('mobile-lock');
+      document.body.classList.remove('mobile-lock');
+    };
+  }, [isMobile]);
 
   useEffect(() => {
     // 注册 Service Worker
@@ -31,10 +49,10 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F5F5F7] text-gray-800 font-sans">
+    <div className={`flex flex-col min-h-screen bg-[#F5F5F7] text-gray-800 font-sans ${isMobile ? 'mobile-main-container' : ''}`}>
       {showHeader && <Header />}
-      <main className={`flex-grow flex items-center justify-center ${showHeader ? 'pt-20' : ''}`}>
-        <div className="w-full max-w-4xl mx-auto p-4">
+      <main className={`${isMobile ? 'flex-grow' : 'flex-grow flex items-center justify-center'} ${showHeader ? 'pt-20' : ''}`}>
+        <div className={`w-full max-w-4xl mx-auto ${isMobile ? 'px-3 py-2' : 'p-4'}`}>
           <Outlet />
         </div>
       </main>

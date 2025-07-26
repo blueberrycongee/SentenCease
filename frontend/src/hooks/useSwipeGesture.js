@@ -17,6 +17,9 @@ const useSwipeGesture = (elementRef, options = {}) => {
 
   // 处理触摸开始事件
   const handleTouchStart = (e) => {
+    // 阻止事件冒泡
+    e.stopPropagation();
+    
     setTouchEnd(null);
     setTouchStart({
       x: e.targetTouches[0].clientX,
@@ -28,6 +31,9 @@ const useSwipeGesture = (elementRef, options = {}) => {
 
   // 处理触摸移动事件
   const handleTouchMove = (e) => {
+    // 阻止事件冒泡
+    e.stopPropagation();
+    
     if (preventDefaultTouchMove) {
       e.preventDefault();
     }
@@ -39,7 +45,10 @@ const useSwipeGesture = (elementRef, options = {}) => {
   };
 
   // 处理触摸结束事件
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e) => {
+    // 阻止事件冒泡
+    e.stopPropagation();
+    
     setIsActive(false);
     if (!touchStart || !touchEnd) return;
 

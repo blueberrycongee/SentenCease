@@ -288,18 +288,10 @@ const LearnPage = () => {
     );
   };
 
-      const renderContent = () => {
-      if (loading && !wordCard) {
-        return <div className="flex items-center justify-center h-full"><Spinner /></div>;
-      }
-      
-      // 为移动设备计算最佳的卡片高度
-      const calculateCardHeight = () => {
-        if (!isMobile) return '';
-        if (window.innerHeight < 700) return 'max-h-[80vh]'; 
-        if (window.innerHeight < 800) return 'max-h-[85vh]';
-        return 'max-h-[90vh]';
-      };
+  const renderContent = () => {
+    if (loading && !wordCard) {
+      return <div className="flex items-center justify-center h-full"><Spinner /></div>;
+    }
 
     if (error) {
       return (
@@ -376,11 +368,12 @@ const LearnPage = () => {
           )}
           
           <SwipeCard
-            className={`bg-white rounded-2xl shadow-xl ${isMobile ? 'p-3' : 'p-10'} ${isMobile ? calculateCardHeight() : 'min-h-[36rem]'} w-full max-w-xl mx-auto cursor-pointer transform z-10 transition-all duration-500 ease-in-out hover:shadow-2xl ${getCardAnimationClass()}`}
+            className={`bg-white rounded-2xl shadow-xl ${isMobile ? 'p-6' : 'p-10'} ${isMobile ? 'min-h-[32rem]' : 'min-h-[36rem]'} w-full max-w-xl mx-auto cursor-pointer transform z-10 transition-all duration-500 ease-in-out hover:shadow-2xl ${getCardAnimationClass()}`}
             onSwipeLeft={() => isRevealed && isInteractable && !isSubmitting && handleReview('不认识')}
             onSwipeRight={() => isRevealed && isInteractable && !isSubmitting && handleReview('认识')}
             onSwipeUp={() => isRevealed && isInteractable && !isSubmitting && handleReview('模糊')}
             disabled={!isRevealed || !isInteractable || isSubmitting}
+            enableSwipe={!isMobile} // 在移动设备上禁用滑动功能
             onClick={() => !isRevealed && setIsRevealed(true)}
           >
             {/* 离线模式指示器 */}
@@ -403,43 +396,38 @@ const LearnPage = () => {
               </div>
             )}
             
-            <div className={`${isMobile ? 'mb-4' : 'mb-8'} text-center`} onClick={() => !isRevealed && setIsRevealed(true)}>
-              <p className={`${isMobile ? 'text-xl' : 'text-3xl'} text-gray-800 leading-relaxed`}>
+            <div className="mb-8 text-center" onClick={() => !isRevealed && setIsRevealed(true)}>
+              <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} text-gray-800 leading-relaxed`}>
                 {renderHighlightedSentence(wordCard.exampleSentence, wordCard.wordInSentence)}
               </p>
-              <div className={`min-h-[2rem] flex items-center justify-center ${isMobile ? 'mt-2' : 'mt-3'} transition-opacity duration-300 ease-in-out`} style={{ opacity: isRevealed ? 1 : 0 }}>
+              <div className="min-h-[2.5rem] flex items-center justify-center mt-3 transition-opacity duration-300 ease-in-out" style={{ opacity: isRevealed ? 1 : 0 }}>
                 {wordCard.exampleSentenceTranslation && (
-                  <p className={`${isMobile ? 'text-xs' : 'text-lg'} text-gray-500`}>{wordCard.exampleSentenceTranslation}</p>
+                  <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-500`}>{wordCard.exampleSentenceTranslation}</p>
                 )}
               </div>
             </div>
 
-            <hr className={`${isMobile ? 'my-3' : 'my-8'} border-gray-200`} />
+            <hr className="my-8 border-gray-200" />
 
             <div className="transition-opacity duration-300 ease-in-out" style={{ opacity: isRevealed ? 1 : 0 }} onClick={(e) => e.stopPropagation()}>
-              <div className={`text-center ${isMobile ? 'mb-3' : 'mb-6'}`}>
-                <p className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-gray-800`}>{wordCard.lemma}</p>
-                <div className={`${isMobile ? 'mt-2 space-y-0.5' : 'mt-3 space-y-2'} text-left`}>
-                  {wordCard.allMeanings.slice(0, isMobile ? 2 : wordCard.allMeanings.length).map(m => (
-                    <div key={m.meaningId} className={`${isMobile ? 'py-0.5 px-1' : 'p-2'} rounded`}>
-                      <span className={`${isMobile ? 'text-xs' : ''} font-semibold text-gray-600`}>{m.partOfSpeech}:</span>
-                      <span className={`ml-1 ${isMobile ? 'text-xs' : ''} text-gray-800`}>{m.definition}</span>
+              <div className="text-center mb-6">
+                <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-gray-800`}>{wordCard.lemma}</p>
+                <div className={`mt-3 ${isMobile ? 'space-y-1.5' : 'space-y-2'} text-left`}>
+                  {wordCard.allMeanings.map(m => (
+                    <div key={m.meaningId} className={`${isMobile ? 'p-1.5' : 'p-2'} rounded`}>
+                      <span className="font-semibold text-gray-600">{m.partOfSpeech}:</span>
+                      <span className={`ml-1.5 ${isMobile ? 'text-sm' : ''} text-gray-800`}>{m.definition}</span>
                     </div>
                   ))}
-                  {isMobile && wordCard.allMeanings.length > 2 && (
-                    <div className="text-xs text-center text-blue-500 py-1">
-                      +{wordCard.allMeanings.length - 2}个更多含义
-                    </div>
-                  )}
                 </div>
               </div>
 
-              <div className={`flex justify-center items-center ${isMobile ? 'gap-1 mt-4' : 'gap-4 mt-12'}`}>
+              <div className={`flex justify-center items-center ${isMobile ? 'gap-3 mt-8' : 'gap-4 mt-12'}`}>
                 <Button 
                   onClick={() => handleReview('不认识')} 
                   disabled={isSubmitting || !isInteractable} 
                   variant="danger" 
-                  className={`${isMobile ? 'w-20 h-9 text-sm' : 'w-32 h-14 text-lg'}`}
+                  className={`${isMobile ? 'w-28 h-14 text-base' : 'w-32 h-14 text-lg'}`}
                 >
                   不认识
                 </Button>
@@ -447,7 +435,7 @@ const LearnPage = () => {
                   onClick={() => handleReview('模糊')} 
                   disabled={isSubmitting || !isInteractable} 
                   variant="warning" 
-                  className={`${isMobile ? 'w-20 h-9 text-sm' : 'w-32 h-14 text-lg'}`}
+                  className={`${isMobile ? 'w-28 h-14 text-base' : 'w-32 h-14 text-lg'}`}
                 >
                   模糊
                 </Button>
@@ -455,7 +443,7 @@ const LearnPage = () => {
                   onClick={() => handleReview('认识')} 
                   disabled={isSubmitting || !isInteractable} 
                   variant="success" 
-                  className={`${isMobile ? 'w-20 h-9 text-sm' : 'w-32 h-14 text-lg'}`}
+                  className={`${isMobile ? 'w-28 h-14 text-base' : 'w-32 h-14 text-lg'}`}
                 >
                   认识
                 </Button>
@@ -478,16 +466,16 @@ const LearnPage = () => {
   };
 
   return (
-    <div className={`bg-[#F5F5F7] w-full min-h-screen flex items-center justify-center ${isMobile ? 'py-1 px-2' : 'p-8'} font-sans`}>
+    <div className={`bg-[#F5F5F7] w-full min-h-screen flex items-center justify-center ${isMobile ? 'p-3' : 'p-8'} font-sans`}>
       <div className="w-full mx-auto">
-        <div className={`bg-white ${isMobile ? 'p-2 h-16' : 'p-4'} rounded-xl shadow-md ${isMobile ? 'mb-2' : 'mb-6'} max-w-5xl mx-auto`}>
+        <div className={`bg-white ${isMobile ? 'p-3' : 'p-4'} rounded-xl shadow-md ${isMobile ? 'mb-4' : 'mb-6'} max-w-5xl mx-auto`}>
           <ProgressBar completed={progress.completed} total={progress.total} />
         </div>
         {renderContent()}
       </div>
       
-      {/* 触摸设备上显示滑动教程 */}
-      {isTouchDevice && !tutorialDismissed && (
+      {/* 非移动设备上的触摸设备才显示滑动教程 */}
+      {isTouchDevice && !isMobile && !tutorialDismissed && (
         <SwipeTutorial onDismiss={() => setTutorialDismissed(true)} />
       )}
     </div>

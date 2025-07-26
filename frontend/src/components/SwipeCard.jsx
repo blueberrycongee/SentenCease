@@ -7,6 +7,7 @@ const SwipeCard = ({
   onSwipeRight, 
   onSwipeUp,
   disabled = false,
+  enableSwipe = true,  // 添加enableSwipe属性，默认为true
   className = ''
 }) => {
   const cardRef = useRef(null);
@@ -18,8 +19,8 @@ const SwipeCard = ({
   });
   const [isDragging, setIsDragging] = useState(false);
   
-  // 使用自定义手势Hook
-  const { swipeDirection, swipeProgress, isSwiping } = useSwipeGesture(cardRef, {
+  // 使用自定义手势Hook，只在enableSwipe为true时注册滑动事件
+  const { swipeDirection, swipeProgress, isSwiping } = enableSwipe ? useSwipeGesture(cardRef, {
     onSwipeLeft: (details) => {
       if (disabled) return;
       // 向左滑（不认识）
@@ -42,11 +43,11 @@ const SwipeCard = ({
       });
     },
     threshold: 80
-  });
+  }) : { swipeDirection: null, swipeProgress: 0, isSwiping: false };
   
   // 当手势变化时更新卡片样式
   useEffect(() => {
-    if (disabled) return;
+    if (disabled || !enableSwipe) return;
     
     if (isSwiping && swipeDirection) {
       setIsDragging(true);
@@ -85,7 +86,7 @@ const SwipeCard = ({
         opacity: 1
       });
     }
-  }, [isSwiping, swipeDirection, swipeProgress, disabled]);
+  }, [isSwiping, swipeDirection, swipeProgress, disabled, enableSwipe]);
   
   // 动画退出
   const animateExit = (direction, onComplete) => {
@@ -165,26 +166,26 @@ const SwipeCard = ({
       
       {/* 滑动方向指示器 */}
       {indicator && (
-        <div className={`absolute top-2 right-2 ${indicator.className} text-white font-bold py-1 px-2 text-xs rounded-lg transform transition-opacity duration-200 ${swipeProgress > 0.3 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+        <div className={`absolute top-3 right-3 ${indicator.className} text-white font-bold py-1.5 px-3 text-sm rounded-lg transform transition-opacity duration-200 ${swipeProgress > 0.3 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
           {indicator.label}
         </div>
       )}
       
-      {/* 滑动提示 - 仅在非拖动状态显示且不在小屏幕设备上 */}
-      {!isDragging && !disabled && (
-        <div className="absolute bottom-2 left-0 right-0 flex justify-center opacity-70">
-          <div className="bg-gray-800/80 text-white text-[10px] py-1 px-2 rounded-full flex items-center space-x-1.5">
+      {/* 滑动提示 - 仅在滑动功能启用且非拖动状态显示 */}
+      {enableSwipe && !isDragging && !disabled && (
+        <div className="absolute bottom-6 left-0 right-0 flex justify-center opacity-70">
+          <div className="bg-gray-800/80 text-white text-xs py-1.5 px-3 rounded-full flex items-center space-x-2">
             <div className="flex flex-col items-center">
-              <span className="text-red-400 text-xs">←</span>
-              <span className="text-[10px]">不认识</span>
+              <span className="text-red-400">←</span>
+              <span className="text-xs">不认识</span>
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-yellow-400 text-xs">↑</span>
-              <span className="text-[10px]">模糊</span>
+              <span className="text-yellow-400">↑</span>
+              <span className="text-xs">模糊</span>
             </div>
             <div className="flex flex-col items-center">
-              <span className="text-green-400 text-xs">→</span>
-              <span className="text-[10px]">认识</span>
+              <span className="text-green-400">→</span>
+              <span className="text-xs">认识</span>
             </div>
           </div>
         </div>

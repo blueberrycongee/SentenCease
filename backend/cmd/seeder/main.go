@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 	"path/filepath"
 
 	"sentencease/backend/internal/config"
@@ -31,7 +32,12 @@ func main() {
 
 	seederInstance := seeder.NewSeeder(db)
 
-	dataDir := filepath.Join("data", "english-vocabulary", "json_original", "json-sentence")
+	// Get the current working directory to build an absolute path
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("could not get working directory: %v", err)
+	}
+	dataDir := filepath.Join(wd, "data", "english-vocabulary", "json_original", "json-sentence")
 
 	// List of all sources to be seeded
 	sources := []string{

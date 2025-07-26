@@ -8,7 +8,7 @@ const useSwipeGesture = (elementRef, options = {}) => {
     onSwipeUp = () => {},
     onSwipeDown = () => {},
     threshold = 50, // 滑动距离阈值（像素）
-    preventDefaultTouchMove = false // 是否阻止默认滑动行为
+    preventDefaultTouchMove = true // 默认阻止滚动行为，改为 true
   } = options;
 
   const [touchStart, setTouchStart] = useState(null);
@@ -17,7 +17,7 @@ const useSwipeGesture = (elementRef, options = {}) => {
 
   // 处理触摸开始事件
   const handleTouchStart = (e) => {
-    // 阻止事件冒泡
+    // 阻止事件冒泡，避免触发父元素的滚动
     e.stopPropagation();
     
     setTouchEnd(null);
@@ -31,11 +31,10 @@ const useSwipeGesture = (elementRef, options = {}) => {
 
   // 处理触摸移动事件
   const handleTouchMove = (e) => {
-    // 阻止事件冒泡
-    e.stopPropagation();
-    
+    // 始终阻止默认行为，防止页面滚动
     if (preventDefaultTouchMove) {
       e.preventDefault();
+      e.stopPropagation();
     }
     
     setTouchEnd({
@@ -149,9 +148,10 @@ const useSwipeGesture = (elementRef, options = {}) => {
     const element = elementRef?.current;
     if (!element) return;
 
-    element.addEventListener('touchstart', handleTouchStart, { passive: true });
-    element.addEventListener('touchmove', handleTouchMove, { passive: !preventDefaultTouchMove });
-    element.addEventListener('touchend', handleTouchEnd, { passive: true });
+    // 修改事件监听器，使用 { passive: false } 以允许阻止默认行为
+    element.addEventListener('touchstart', handleTouchStart, { passive: false });
+    element.addEventListener('touchmove', handleTouchMove, { passive: false });
+    element.addEventListener('touchend', handleTouchEnd, { passive: false });
 
     return () => {
       element.removeEventListener('touchstart', handleTouchStart);

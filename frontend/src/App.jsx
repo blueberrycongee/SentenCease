@@ -5,6 +5,7 @@ import NetworkStatus from './components/NetworkStatus';
 import InstallPrompt from './components/InstallPrompt';
 import pwaService from './services/pwaService';
 import useDeviceDetect from './hooks/useDeviceDetect';
+import useBodyScrollLock from './hooks/useBodyScrollLock';
 import './App.css';
 
 function App() {
@@ -14,14 +15,8 @@ function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const { isMobile } = useDeviceDetect();
   
-  // 移动设备检测逻辑
-  useEffect(() => {
-    if (isMobile) {
-      document.body.dataset.isMobile = 'true';
-    } else {
-      delete document.body.dataset.isMobile;
-    }
-  }, [isMobile]);
+  // 在移动设备上启用滚动锁定
+  useBodyScrollLock(isMobile);
 
   useEffect(() => {
     // 注册 Service Worker
@@ -42,7 +37,7 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#F5F5F7] text-gray-800 font-sans">
+    <div className="flex flex-col min-h-screen bg-[#F5F5F7] text-gray-800 font-sans app-container">
       {showHeader && <Header />}
       <main className={`flex-grow flex items-center justify-center ${showHeader ? 'pt-20' : ''}`}>
         <div className="w-full max-w-4xl mx-auto p-4">

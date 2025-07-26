@@ -7,7 +7,8 @@ const SwipeCard = ({
   onSwipeRight, 
   onSwipeUp,
   disabled = false,
-  className = ''
+  className = '',
+  onClick
 }) => {
   const cardRef = useRef(null);
   const [transform, setTransform] = useState({
@@ -41,7 +42,8 @@ const SwipeCard = ({
         if (onSwipeUp) onSwipeUp(details);
       });
     },
-    threshold: 80
+    threshold: 80,
+    preventDefaultTouchMove: true // 确保阻止默认滚动行为
   });
   
   // 当手势变化时更新卡片样式
@@ -124,6 +126,17 @@ const SwipeCard = ({
     }, 300);
   };
   
+  // 处理点击事件
+  const handleClick = (e) => {
+    // 阻止事件冒泡
+    e.stopPropagation();
+    
+    // 如果提供了点击回调，则执行
+    if (onClick && !isDragging) {
+      onClick(e);
+    }
+  };
+  
   // 获取卡片状态指示器样式
   const getIndicatorStyle = () => {
     if (!isSwiping || !swipeDirection) return null;
@@ -151,11 +164,6 @@ const SwipeCard = ({
   
   const indicator = getIndicatorStyle();
   
-  // 阻止事件冒泡到页面
-  const preventPropagation = (e) => {
-    e.stopPropagation();
-  };
-  
   return (
     <div 
       ref={cardRef}
@@ -165,9 +173,7 @@ const SwipeCard = ({
         opacity: transform.opacity,
         transition: isDragging ? 'none' : 'all 0.3s ease'
       }}
-      onTouchStart={preventPropagation}
-      onTouchMove={preventPropagation}
-      onTouchEnd={preventPropagation}
+      onClick={handleClick}
     >
       {children}
       

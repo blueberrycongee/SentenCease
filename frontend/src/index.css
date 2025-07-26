@@ -1,6 +1,31 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* 全局变量 */
+:root {
+  --vh: 1vh; /* 将被 JavaScript 动态设置 */
+}
+
+/* 滚动控制相关样式 */
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  -webkit-overflow-scrolling: touch;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 修复移动端视口高度问题 */
+.app-container {
+  min-height: 100vh; /* 兼容非移动设备 */
+  min-height: calc(var(--vh, 1vh) * 100); /* 使用动态计算的视口高度 */
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 卡片容器滚动控制 */
+.swipe-card-container {
+  touch-action: pan-y; /* 允许垂直平移但阻止水平滚动 */
+  user-select: none; /* 防止文本选择影响触摸体验 */
+}
 
 @layer utilities {
   .animate-fade-in {
@@ -19,27 +44,8 @@
   }
 }
 
-/* 仅针对学习页面的移动端样式 */
-@media (max-width: 767px) {
-  .learn-page-mobile {
-    position: relative;
-    touch-action: none;
-    -webkit-overflow-scrolling: none;
-    overscroll-behavior: none;
-  }
-  
-  .learn-page-mobile .swipe-card-container {
-    position: relative;
-    z-index: 10;
-  }
-}
-
-/* SwipeCard 相关样式 */
-.swipe-card-container {
-  touch-action: none; /* 防止浏览器默认滚动行为 */
-}
-
-/* 解决iOS Safari弹性滚动问题 */
-body {
-  overscroll-behavior: none;
+/* 提高触摸元素的响应区域 */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
 }

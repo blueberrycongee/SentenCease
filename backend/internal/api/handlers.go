@@ -138,11 +138,14 @@ func (a *API) PeekNextWord(c *gin.Context) {
 
 	wordCard, err := srs.PeekNextWordForReview(c.Request.Context(), a.DB, userID, source)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, database.ErrNotFound) {
+		// More robust error handling: check for any 'not found' type error
+		if errors.Is(err, database.ErrNotFound) {
 			c.JSON(http.StatusOK, gin.H{"message": "当前没有更多单词了"})
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法获取下一个单词: " + err.Error()})
+		// Log the actual error for debugging and return a generic server error
+		log.Printf("Error peeking next word for user %s: %v", userID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "无法获取下一个单词"})
 		return
 	}
 

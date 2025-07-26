@@ -11,8 +11,8 @@ WORKDIR /root/
 # Copy the pre-built binaries and data from the local filesystem
 COPY backend/main .
 COPY backend/seeder .
-# Copy the contents of backend/data directly into the working directory
-COPY backend/data/ .
+# Copy the english-vocabulary directory explicitly to the working directory's root
+COPY backend/data/english-vocabulary /root/english-vocabulary
 
 # Give the binaries execute permissions
 RUN chmod +x ./main

@@ -165,26 +165,26 @@ const SwipeCard = ({
       
       {/* 滑动方向指示器 */}
       {indicator && (
-        <div className={`absolute top-4 right-4 ${indicator.className} text-white font-bold py-2 px-4 rounded-lg transform transition-opacity duration-200 ${swipeProgress > 0.3 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+        <div className={`absolute top-3 right-3 ${indicator.className} text-white font-bold py-1.5 px-3 text-sm rounded-lg transform transition-opacity duration-200 ${swipeProgress > 0.3 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
           {indicator.label}
         </div>
       )}
       
       {/* 滑动提示 - 仅在非拖动状态显示 */}
       {!isDragging && !disabled && (
-        <div className="absolute bottom-8 left-0 right-0 flex justify-center opacity-70">
-          <div className="bg-gray-800/80 text-white text-xs py-2 px-4 rounded-full flex items-center space-x-3">
+        <div className="absolute bottom-6 left-0 right-0 flex justify-center opacity-70">
+          <div className="bg-gray-800/80 text-white text-xs py-1.5 px-3 rounded-full flex items-center space-x-2">
             <div className="flex flex-col items-center">
               <span className="text-red-400">←</span>
-              <span>不认识</span>
+              <span className="text-xs">不认识</span>
             </div>
             <div className="flex flex-col items-center">
               <span className="text-yellow-400">↑</span>
-              <span>模糊</span>
+              <span className="text-xs">模糊</span>
             </div>
             <div className="flex flex-col items-center">
               <span className="text-green-400">→</span>
-              <span>认识</span>
+              <span className="text-xs">认识</span>
             </div>
           </div>
         </div>

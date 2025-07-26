@@ -273,16 +273,16 @@ const LearnPage = () => {
     return (
       <div className="w-full">
         <div className="flex justify-between items-center mb-1">
-          <div className="text-sm font-semibold text-gray-700">今日学习进度</div>
-          <div className="text-sm text-gray-600">{statusText}</div>
+          <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-700`}>今日学习进度</div>
+          <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600`}>{statusText}</div>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
-          <div className={`${barColor} h-4 rounded-full transition-all duration-300 ease-in-out`} style={{ width: `${percentage}%` }}></div>
+        <div className={`w-full bg-gray-200 rounded-full ${isMobile ? 'h-3 mb-1.5' : 'h-4 mb-2'}`}>
+          <div className={`${barColor} ${isMobile ? 'h-3' : 'h-4'} rounded-full transition-all duration-300 ease-in-out`} style={{ width: `${percentage}%` }}></div>
         </div>
-        <div className="flex justify-between text-sm text-gray-600">
-          <span>已完成: {completed} 单词</span>
+        <div className={`flex justify-between ${isMobile ? 'text-xs' : 'text-sm'} text-gray-600`}>
+          <span>已完成: {completed}</span>
           <span>{percentage}%</span>
-          <span>总计: {total} 单词</span>
+          <span>总计: {total}</span>
         </div>
       </div>
     );
@@ -368,7 +368,7 @@ const LearnPage = () => {
           )}
           
           <SwipeCard
-            className={`bg-white rounded-2xl shadow-xl p-10 min-h-[36rem] w-full max-w-xl mx-6 cursor-pointer transform z-10 transition-all duration-500 ease-in-out hover:shadow-2xl ${getCardAnimationClass()}`}
+            className={`bg-white rounded-2xl shadow-xl ${isMobile ? 'p-6' : 'p-10'} ${isMobile ? 'min-h-[32rem]' : 'min-h-[36rem]'} w-full max-w-xl mx-auto cursor-pointer transform z-10 transition-all duration-500 ease-in-out hover:shadow-2xl ${getCardAnimationClass()}`}
             onSwipeLeft={() => isRevealed && isInteractable && !isSubmitting && handleReview('不认识')}
             onSwipeRight={() => isRevealed && isInteractable && !isSubmitting && handleReview('认识')}
             onSwipeUp={() => isRevealed && isInteractable && !isSubmitting && handleReview('模糊')}
@@ -377,8 +377,8 @@ const LearnPage = () => {
           >
             {/* 离线模式指示器 */}
             {!isOnline && (
-              <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-lg mb-4 text-sm flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className={`bg-amber-100 text-amber-800 px-3 ${isMobile ? 'py-1.5 mb-3' : 'py-2 mb-4'} rounded-lg ${isMobile ? 'text-xs' : 'text-sm'} flex items-center`}>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>离线模式 - 您的学习进度将在恢复连接后同步</span>
@@ -387,8 +387,8 @@ const LearnPage = () => {
             
             {/* 同步成功提示 */}
             {isOnline && hasPendingSync && (
-              <div className="bg-green-100 text-green-800 px-4 py-2 rounded-lg mb-4 text-sm flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className={`bg-green-100 text-green-800 px-3 ${isMobile ? 'py-1.5 mb-3' : 'py-2 mb-4'} rounded-lg ${isMobile ? 'text-xs' : 'text-sm'} flex items-center`}>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
                 <span>离线学习数据已成功同步</span>
@@ -396,12 +396,12 @@ const LearnPage = () => {
             )}
             
             <div className="mb-8 text-center" onClick={() => !isRevealed && setIsRevealed(true)}>
-              <p className="text-3xl text-gray-800 leading-relaxed">
+              <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} text-gray-800 leading-relaxed`}>
                 {renderHighlightedSentence(wordCard.exampleSentence, wordCard.wordInSentence)}
               </p>
-              <div className="min-h-[3rem] flex items-center justify-center mt-4 transition-opacity duration-300 ease-in-out" style={{ opacity: isRevealed ? 1 : 0 }}>
+              <div className="min-h-[2.5rem] flex items-center justify-center mt-3 transition-opacity duration-300 ease-in-out" style={{ opacity: isRevealed ? 1 : 0 }}>
                 {wordCard.exampleSentenceTranslation && (
-                  <p className="text-lg text-gray-500">{wordCard.exampleSentenceTranslation}</p>
+                  <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-500`}>{wordCard.exampleSentenceTranslation}</p>
                 )}
               </div>
             </div>
@@ -409,22 +409,43 @@ const LearnPage = () => {
             <hr className="my-8 border-gray-200" />
 
             <div className="transition-opacity duration-300 ease-in-out" style={{ opacity: isRevealed ? 1 : 0 }} onClick={(e) => e.stopPropagation()}>
-              <div className="text-center mb-8">
-                <p className="text-3xl font-bold text-gray-800">{wordCard.lemma}</p>
-                <div className="mt-4 space-y-2 text-left">
+              <div className="text-center mb-6">
+                <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-gray-800`}>{wordCard.lemma}</p>
+                <div className={`mt-3 ${isMobile ? 'space-y-1.5' : 'space-y-2'} text-left`}>
                   {wordCard.allMeanings.map(m => (
-                    <div key={m.meaningId} className="p-2 rounded">
+                    <div key={m.meaningId} className={`${isMobile ? 'p-1.5' : 'p-2'} rounded`}>
                       <span className="font-semibold text-gray-600">{m.partOfSpeech}:</span>
-                      <span className="ml-2 text-gray-800">{m.definition}</span>
+                      <span className={`ml-1.5 ${isMobile ? 'text-sm' : ''} text-gray-800`}>{m.definition}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="flex justify-center items-center gap-4 mt-12">
-                <Button onClick={() => handleReview('不认识')} disabled={isSubmitting || !isInteractable} variant="danger" className="w-32 h-14 text-lg">不认识</Button>
-                <Button onClick={() => handleReview('模糊')} disabled={isSubmitting || !isInteractable} variant="warning" className="w-32 h-14 text-lg">模糊</Button>
-                <Button onClick={() => handleReview('认识')} disabled={isSubmitting || !isInteractable} variant="success" className="w-32 h-14 text-lg">认识</Button>
+              <div className={`flex justify-center items-center ${isMobile ? 'gap-2 mt-8' : 'gap-4 mt-12'}`}>
+                <Button 
+                  onClick={() => handleReview('不认识')} 
+                  disabled={isSubmitting || !isInteractable} 
+                  variant="danger" 
+                  className={`${isMobile ? 'w-24 h-12 text-base' : 'w-32 h-14 text-lg'}`}
+                >
+                  不认识
+                </Button>
+                <Button 
+                  onClick={() => handleReview('模糊')} 
+                  disabled={isSubmitting || !isInteractable} 
+                  variant="warning" 
+                  className={`${isMobile ? 'w-24 h-12 text-base' : 'w-32 h-14 text-lg'}`}
+                >
+                  模糊
+                </Button>
+                <Button 
+                  onClick={() => handleReview('认识')} 
+                  disabled={isSubmitting || !isInteractable} 
+                  variant="success" 
+                  className={`${isMobile ? 'w-24 h-12 text-base' : 'w-32 h-14 text-lg'}`}
+                >
+                  认识
+                </Button>
               </div>
             </div>
           </SwipeCard>
@@ -444,9 +465,9 @@ const LearnPage = () => {
   };
 
   return (
-    <div className="bg-[#F5F5F7] w-full min-h-screen flex items-center justify-center p-8 font-sans">
+    <div className={`bg-[#F5F5F7] w-full min-h-screen flex items-center justify-center ${isMobile ? 'p-3' : 'p-8'} font-sans`}>
       <div className="w-full mx-auto">
-        <div className="bg-white p-4 rounded-xl shadow-md mb-6 max-w-5xl mx-auto">
+        <div className={`bg-white ${isMobile ? 'p-3' : 'p-4'} rounded-xl shadow-md ${isMobile ? 'mb-4' : 'mb-6'} max-w-5xl mx-auto`}>
           <ProgressBar completed={progress.completed} total={progress.total} />
         </div>
         {renderContent()}

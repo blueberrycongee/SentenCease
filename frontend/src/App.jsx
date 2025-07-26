@@ -14,20 +14,13 @@ function App() {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const { isMobile } = useDeviceDetect();
   
-  // 在移动设备上锁定页面滚动
+  // 移动设备检测逻辑
   useEffect(() => {
     if (isMobile) {
-      document.documentElement.classList.add('mobile-lock');
-      document.body.classList.add('mobile-lock');
+      document.body.dataset.isMobile = 'true';
     } else {
-      document.documentElement.classList.remove('mobile-lock');
-      document.body.classList.remove('mobile-lock');
+      delete document.body.dataset.isMobile;
     }
-    
-    return () => {
-      document.documentElement.classList.remove('mobile-lock');
-      document.body.classList.remove('mobile-lock');
-    };
   }, [isMobile]);
 
   useEffect(() => {
@@ -49,10 +42,10 @@ function App() {
   };
 
   return (
-    <div className={`flex flex-col min-h-screen bg-[#F5F5F7] text-gray-800 font-sans ${isMobile ? 'mobile-main-container' : ''}`}>
+    <div className="flex flex-col min-h-screen bg-[#F5F5F7] text-gray-800 font-sans">
       {showHeader && <Header />}
-      <main className={`${isMobile ? 'flex-grow' : 'flex-grow flex items-center justify-center'} ${showHeader ? 'pt-20' : ''}`}>
-        <div className={`w-full max-w-4xl mx-auto ${isMobile ? 'px-3 py-2' : 'p-4'}`}>
+      <main className={`flex-grow flex items-center justify-center ${showHeader ? 'pt-20' : ''}`}>
+        <div className="w-full max-w-4xl mx-auto p-4">
           <Outlet />
         </div>
       </main>

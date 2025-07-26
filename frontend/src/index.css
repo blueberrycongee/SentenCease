@@ -2,33 +2,35 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 在移动设备上锁定页面滚动 */
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+/* 仅针对学习页面的移动端样式 */
 @media (max-width: 767px) {
-  html.mobile-lock,
-  body.mobile-lock {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
+  .learn-page-mobile {
+    position: relative;
+    touch-action: none;
+    -webkit-overflow-scrolling: none;
+    overscroll-behavior: none;
   }
-
-  /* 主内容容器样式 */
-  .mobile-main-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  /* 允许内容区域滚动（如果需要） */
-  .mobile-scroll-container {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch; /* 平滑滚动 */
+  
+  .learn-page-mobile .swipe-card-container {
+    position: relative;
+    z-index: 10;
   }
 }
 

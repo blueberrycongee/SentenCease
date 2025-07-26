@@ -465,17 +465,12 @@ const LearnPage = () => {
   };
 
   return (
-    <div 
-      className={`bg-[#F5F5F7] w-full min-h-screen ${!isMobile ? 'flex items-center justify-center p-8' : ''} font-sans`}
-      style={isMobile ? { height: '100%', overflow: 'hidden' } : {}}
-    >
-      <div className="w-full mx-auto" style={isMobile ? { height: '100%' } : {}}>
+    <div className={`bg-[#F5F5F7] w-full min-h-screen flex items-center justify-center ${isMobile ? 'p-3' : 'p-8'} font-sans ${isMobile ? 'learn-page-mobile' : ''}`}>
+      <div className="w-full mx-auto">
         <div className={`bg-white ${isMobile ? 'p-3' : 'p-4'} rounded-xl shadow-md ${isMobile ? 'mb-4' : 'mb-6'} max-w-5xl mx-auto`}>
           <ProgressBar completed={progress.completed} total={progress.total} />
         </div>
-        <div className={isMobile ? 'h-[calc(100%-60px)]' : ''}>
-          {renderContent()}
-        </div>
+        {renderContent()}
       </div>
       
       {/* 触摸设备上显示滑动教程 */}

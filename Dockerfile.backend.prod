@@ -11,6 +11,9 @@ WORKDIR /root/
 # Copy the pre-built binary from the local filesystem
 COPY backend/main .
 
+# Give the binary execute permissions
+RUN chmod +x ./main
+
 # Expose port 8080 to the outside world
 EXPOSE 8080
 

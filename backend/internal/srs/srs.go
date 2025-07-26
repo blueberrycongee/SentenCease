@@ -149,16 +149,28 @@ func peekNextWordFromDailyPlan(ctx context.Context, db *pgxpool.Pool, userID uui
 	// This logic needs to be adapted to fetch a contextual meaning first, then build the card.
 	// For simplicity, we'll find the next pending item and use it as context.
 	query := `
+		WITH latest_plan AS (
+			SELECT id FROM daily_plans
+			WHERE user_id = $1 AND created_at >= current_date
+			ORDER BY created_at DESC
+			LIMIT 1
+		),
+		reviewed_words AS (
+			SELECT dpw.meaning_id 
+			FROM daily_plan_words dpw
+			JOIN user_progress up ON dpw.meaning_id = up.meaning_id AND up.user_id = $1
+			WHERE dpw.plan_id = (SELECT id FROM latest_plan)
+			AND up.last_reviewed_at >= current_date
+		)
 		SELECT m.id, m.word_id, m.part_of_speech, m.definition, m.example_sentence, m.example_sentence_translation, w.lemma
-		FROM daily_plan_items dpi
-		JOIN daily_plans dp ON dp.id = dpi.daily_plan_id
-		JOIN meanings m ON m.id = dpi.meaning_id
-		JOIN words w ON w.id = m.word_id
-		WHERE dp.user_id = $1 
-		AND dp.created_at = (SELECT MAX(created_at) FROM daily_plans WHERE user_id = $1)
-		AND dpi.status = 'pending'
-		ORDER BY dpi.order ASC
-		LIMIT 1
+		FROM meanings m
+		JOIN words w ON m.word_id = w.id
+		JOIN daily_plan_words dpw ON m.id = dpw.meaning_id
+		LEFT JOIN reviewed_words rw ON m.id = rw.meaning_id
+		WHERE dpw.plan_id = (SELECT id FROM latest_plan)
+		  AND rw.meaning_id IS NULL
+		ORDER BY m.id
+		LIMIT 1;
 	`
 	var contextualMeaning models.Meaning
 	err := db.QueryRow(ctx, query, userID).Scan(

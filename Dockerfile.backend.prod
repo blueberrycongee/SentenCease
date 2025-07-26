@@ -11,7 +11,8 @@ WORKDIR /root/
 # Copy the pre-built binaries and data from the local filesystem
 COPY backend/main .
 COPY backend/seeder .
-COPY backend/data ./data
+# Copy the contents of backend/data directly into the working directory
+COPY backend/data/ .
 
 # Give the binaries execute permissions
 RUN chmod +x ./main

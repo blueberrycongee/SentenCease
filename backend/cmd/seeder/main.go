@@ -37,7 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("could not get working directory: %v", err)
 	}
-	dataDir := filepath.Join(wd, "data", "english-vocabulary", "json_original", "json-sentence")
+	dataDir := filepath.Join(wd, "english-vocabulary", "json_original", "json-sentence")
 
 	// List of all sources to be seeded
 	sources := []string{

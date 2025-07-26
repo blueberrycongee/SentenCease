@@ -10,8 +10,11 @@ html, body {
   margin: 0;
   padding: 0;
   width: 100%;
+  height: 100%;
+  overflow-x: hidden; /* 防止水平滚动 */
   -webkit-overflow-scrolling: touch;
   -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none; /* 防止iOS上的弹性滚动 */
 }
 
 /* 修复移动端视口高度问题 */
@@ -23,8 +26,25 @@ html, body {
 
 /* 卡片容器滚动控制 */
 .swipe-card-container {
-  touch-action: pan-y; /* 允许垂直平移但阻止水平滚动 */
+  touch-action: none; /* 完全阻止浏览器默认触摸行为 */
   user-select: none; /* 防止文本选择影响触摸体验 */
+  transform: translateZ(0); /* 强制硬件加速 */
+  will-change: transform; /* 告知浏览器元素将变化，提前优化 */
+  backface-visibility: hidden; /* 减少复合层 */
+}
+
+/* 添加对移动设备的优化 */
+@media (max-width: 768px) {
+  .swipe-card-container {
+    max-width: 100%; /* 确保卡片不溢出屏幕 */
+    margin: 0 auto;
+    padding: 0.75rem !important; /* 为小屏幕调整内边距 */
+  }
+  
+  /* 移动端文字大小调整 */
+  .mobile-text-adjust {
+    font-size: 0.9rem !important;
+  }
 }
 
 @layer utilities {
@@ -41,6 +61,88 @@ html, body {
       opacity: 1;
       transform: translateY(0);
     }
+  }
+  
+  /* 卡片滑动动画 */
+  .animate-slide-out-left {
+    animation: slideOutLeft 0.25s ease-out forwards;
+  }
+  
+  .animate-slide-in-right {
+    animation: slideInRight 0.25s ease-out forwards;
+  }
+  
+  .animate-slide-to-center {
+    animation: slideToCenter 0.25s ease-out forwards;
+  }
+  
+  .animate-slide-to-center-from-left {
+    animation: slideToCenterFromLeft 0.25s ease-out forwards;
+  }
+  
+  /* 卡片浮动动画 */
+  .animate-float {
+    animation: float 4s ease-in-out infinite;
+  }
+  
+  @keyframes slideOutLeft {
+    from {
+      transform: translateX(0) rotate(0);
+      opacity: 1;
+    }
+    to {
+      transform: translateX(-100%) rotate(-15deg);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes slideInRight {
+    from {
+      transform: translateX(100%) rotate(15deg);
+      opacity: 0;
+    }
+    to {
+      transform: translateX(0) rotate(0);
+      opacity: 1;
+    }
+  }
+  
+  @keyframes slideToCenter {
+    from {
+      transform: translateX(75%) rotate(8deg);
+    }
+    to {
+      transform: translateX(0) rotate(0);
+    }
+  }
+  
+  @keyframes slideToCenterFromLeft {
+    from {
+      transform: translateX(-75%) rotate(-8deg);
+    }
+    to {
+      transform: translateX(0) rotate(0);
+    }
+  }
+  
+  @keyframes float {
+    0% {
+      transform: translateY(0) rotate(var(--rotate, 0));
+    }
+    50% {
+      transform: translateY(-10px) rotate(var(--rotate, 0));
+    }
+    100% {
+      transform: translateY(0) rotate(var(--rotate, 0));
+    }
+  }
+  
+  /* 优化动画性能 */
+  .hardware-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000;
+    will-change: transform;
   }
 }
 

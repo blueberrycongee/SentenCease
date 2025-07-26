@@ -27,6 +27,24 @@ const LearnPage = () => {
   const { isMobile, isTouchDevice } = useDeviceDetect();
   const navigate = useNavigate();
 
+  // 设置动态视口高度
+  useEffect(() => {
+    const setViewportHeight = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+    
+    // 初始设置和监听调整事件
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', setViewportHeight);
+    
+    return () => {
+      window.removeEventListener('resize', setViewportHeight);
+      window.removeEventListener('orientationchange', setViewportHeight);
+    };
+  }, []);
+
   // 监听在线状态变化
   useEffect(() => {
     const handleOnline = () => {
@@ -276,8 +294,8 @@ const LearnPage = () => {
           <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-semibold text-gray-700`}>今日学习进度</div>
           <div className={`${isMobile ? 'text-xs' : 'text-sm'} text-gray-600`}>{statusText}</div>
         </div>
-        <div className={`w-full bg-gray-200 rounded-full ${isMobile ? 'h-3 mb-1.5' : 'h-4 mb-2'}`}>
-          <div className={`${barColor} ${isMobile ? 'h-3' : 'h-4'} rounded-full transition-all duration-300 ease-in-out`} style={{ width: `${percentage}%` }}></div>
+        <div className={`w-full bg-gray-200 rounded-full ${isMobile ? 'h-2.5 mb-1' : 'h-4 mb-2'}`}>
+          <div className={`${barColor} ${isMobile ? 'h-2.5' : 'h-4'} rounded-full transition-all duration-300 ease-in-out`} style={{ width: `${percentage}%` }}></div>
         </div>
         <div className={`flex justify-between ${isMobile ? 'text-xs' : 'text-sm'} text-gray-600`}>
           <span>已完成: {completed}</span>
@@ -328,32 +346,32 @@ const LearnPage = () => {
     }
 
     const getCardAnimationClass = () => {
-      if (!isAnimating) return "";
-      if (direction === 'next') return "animate-slide-out-left";
-      if (direction === 'prev') return "animate-slide-in-right";
-      return "";
+      if (!isAnimating) return "hardware-accelerated";
+      if (direction === 'next') return "animate-slide-out-left hardware-accelerated";
+      if (direction === 'prev') return "animate-slide-in-right hardware-accelerated";
+      return "hardware-accelerated";
     };
 
     const getPrevCardAnimationClass = () => {
-      if (!isAnimating) return "";
-      if (direction === 'prev') return "animate-slide-to-center-from-left";
-      return "";
+      if (!isAnimating) return "hardware-accelerated";
+      if (direction === 'prev') return "animate-slide-to-center-from-left hardware-accelerated";
+      return "hardware-accelerated";
     };
 
     const getNextCardAnimationClass = () => {
-      if (!isAnimating) return "";
-      if (direction === 'next') return "animate-slide-to-center";
-      return "";
+      if (!isAnimating) return "hardware-accelerated";
+      if (direction === 'next') return "animate-slide-to-center hardware-accelerated";
+      return "hardware-accelerated";
     };
 
     return (
       <div className="w-full">
-        <div className="relative min-h-[36rem] flex items-center justify-center overflow-visible pb-4">
+        <div className={`relative ${isMobile ? 'min-h-[28rem]' : 'min-h-[36rem]'} flex items-center justify-center overflow-visible pb-4`}>
           {prevWordCard && (
             <div 
-              className={`absolute hidden sm:block bg-white/90 rounded-xl shadow-md p-6 w-72 transform -rotate-8 -left-48 cursor-pointer transition-all duration-300 ease-in-out hover:scale-105 hover:-translate-y-2 hover:shadow-lg animate-float ${getPrevCardAnimationClass()}`}
+              className={`absolute hidden sm:block bg-white/90 rounded-xl shadow-md p-6 w-72 transform -rotate-8 ${isMobile ? '-translate-x-3/4 left-0' : '-left-48'} cursor-pointer transition-all duration-300 ease-in-out hover:scale-105 hover:-translate-y-2 hover:shadow-lg animate-float ${getPrevCardAnimationClass()}`}
               onClick={goToPreviousWord}
-              style={{zIndex: 1}}
+              style={{zIndex: isMobile ? 5 : 1, '--rotate': '-8deg'}}
             >
               <div className="card-word text-center text-2xl font-bold text-gray-600">{prevWordCard.lemma}</div>
               <div className="text-sm text-center text-gray-500 mt-2">{prevWordCard.allMeanings[0]?.definition}</div>
@@ -362,22 +380,22 @@ const LearnPage = () => {
           )}
           
           {prevWordCard && (
-            <button className="sm:hidden absolute left-1 top-1/2 transform -translate-y-1/2 bg-white/90 rounded-full w-12 h-12 flex items-center justify-center shadow-md z-20" onClick={goToPreviousWord}>
-              <div className="text-blue-600 text-2xl">&larr;</div>
+            <button className="sm:hidden absolute left-1 top-1/2 transform -translate-y-1/2 bg-white/90 rounded-full w-10 h-10 flex items-center justify-center shadow-md z-20" onClick={goToPreviousWord}>
+              <div className="text-blue-600 text-xl">&larr;</div>
             </button>
           )}
           
           <SwipeCard
-            className={`bg-white rounded-2xl shadow-xl ${isMobile ? 'p-6' : 'p-10'} ${isMobile ? 'min-h-[32rem]' : 'min-h-[36rem]'} w-full max-w-xl mx-auto cursor-pointer transform z-10 transition-all duration-500 ease-in-out hover:shadow-2xl ${getCardAnimationClass()}`}
-            onSwipeLeft={() => isRevealed && isInteractable && !isSubmitting && handleReview('不认识')}
-            onSwipeRight={() => isRevealed && isInteractable && !isSubmitting && handleReview('认识')}
+            className={`bg-white rounded-2xl shadow-xl ${isMobile ? 'p-4' : 'p-10'} ${isMobile ? 'min-h-[28rem]' : 'min-h-[36rem]'} w-full max-w-xl mx-auto cursor-pointer transform z-10 transition-all duration-500 ease-in-out hover:shadow-2xl ${getCardAnimationClass()}`}
+            onSwipeLeft={() => isRevealed && isInteractable && !isSubmitting && handleReview('认识')}
+            onSwipeRight={() => isRevealed && isInteractable && !isSubmitting && handleReview('不认识')}
             onSwipeUp={() => isRevealed && isInteractable && !isSubmitting && handleReview('模糊')}
             disabled={!isRevealed || !isInteractable || isSubmitting}
             onClick={() => !isRevealed && setIsRevealed(true)}
           >
             {/* 离线模式指示器 */}
             {!isOnline && (
-              <div className={`bg-amber-100 text-amber-800 px-3 ${isMobile ? 'py-1.5 mb-3' : 'py-2 mb-4'} rounded-lg ${isMobile ? 'text-xs' : 'text-sm'} flex items-center`}>
+              <div className={`bg-amber-100 text-amber-800 px-2 ${isMobile ? 'py-1 mb-2' : 'py-2 mb-4'} rounded-lg ${isMobile ? 'text-xs' : 'text-sm'} flex items-center`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -387,7 +405,7 @@ const LearnPage = () => {
             
             {/* 同步成功提示 */}
             {isOnline && hasPendingSync && (
-              <div className={`bg-green-100 text-green-800 px-3 ${isMobile ? 'py-1.5 mb-3' : 'py-2 mb-4'} rounded-lg ${isMobile ? 'text-xs' : 'text-sm'} flex items-center`}>
+              <div className={`bg-green-100 text-green-800 px-2 ${isMobile ? 'py-1 mb-2' : 'py-2 mb-4'} rounded-lg ${isMobile ? 'text-xs' : 'text-sm'} flex items-center`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className={`${isMobile ? 'h-3 w-3 mr-1' : 'h-4 w-4 mr-2'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
@@ -395,56 +413,56 @@ const LearnPage = () => {
               </div>
             )}
             
-            <div className="mb-8 text-center" onClick={() => !isRevealed && setIsRevealed(true)}>
-              <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} text-gray-800 leading-relaxed`}>
+            <div className={`${isMobile ? 'mb-5' : 'mb-8'} text-center`} onClick={() => !isRevealed && setIsRevealed(true)}>
+              <p className={`${isMobile ? 'text-xl mobile-text-adjust' : 'text-3xl'} text-gray-800 leading-relaxed`}>
                 {renderHighlightedSentence(wordCard.exampleSentence, wordCard.wordInSentence)}
               </p>
-              <div className="min-h-[2.5rem] flex items-center justify-center mt-3 transition-opacity duration-300 ease-in-out" style={{ opacity: isRevealed ? 1 : 0 }}>
+              <div className={`min-h-[2.5rem] flex items-center justify-center ${isMobile ? 'mt-2' : 'mt-3'} transition-opacity duration-300 ease-in-out`} style={{ opacity: isRevealed ? 1 : 0 }}>
                 {wordCard.exampleSentenceTranslation && (
-                  <p className={`${isMobile ? 'text-base' : 'text-lg'} text-gray-500`}>{wordCard.exampleSentenceTranslation}</p>
+                  <p className={`${isMobile ? 'text-sm mobile-text-adjust' : 'text-lg'} text-gray-500`}>{wordCard.exampleSentenceTranslation}</p>
                 )}
               </div>
             </div>
 
-            <hr className="my-8 border-gray-200" />
+            <hr className={`${isMobile ? 'my-4' : 'my-8'} border-gray-200`} />
 
             <div className="transition-opacity duration-300 ease-in-out" style={{ opacity: isRevealed ? 1 : 0 }} onClick={(e) => e.stopPropagation()}>
-              <div className="text-center mb-6">
-                <p className={`${isMobile ? 'text-2xl' : 'text-3xl'} font-bold text-gray-800`}>{wordCard.lemma}</p>
-                <div className={`mt-3 ${isMobile ? 'space-y-1.5' : 'space-y-2'} text-left`}>
+              <div className="text-center mb-4">
+                <p className={`${isMobile ? 'text-xl' : 'text-3xl'} font-bold text-gray-800`}>{wordCard.lemma}</p>
+                <div className={`mt-2 ${isMobile ? 'space-y-1' : 'space-y-2'} text-left`}>
                   {wordCard.allMeanings.map(m => (
-                    <div key={m.meaningId} className={`${isMobile ? 'p-1.5' : 'p-2'} rounded`}>
+                    <div key={m.meaningId} className={`${isMobile ? 'p-1' : 'p-2'} rounded`}>
                       <span className="font-semibold text-gray-600">{m.partOfSpeech}:</span>
-                      <span className={`ml-1.5 ${isMobile ? 'text-sm' : ''} text-gray-800`}>{m.definition}</span>
+                      <span className={`ml-1.5 ${isMobile ? 'text-xs mobile-text-adjust' : ''} text-gray-800`}>{m.definition}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className={`flex justify-center items-center ${isMobile ? 'gap-2 mt-8' : 'gap-4 mt-12'}`}>
+              <div className={`flex justify-center items-center ${isMobile ? 'gap-1.5 mt-4' : 'gap-4 mt-12'}`}>
                 <Button 
-                  onClick={() => handleReview('不认识')} 
+                  onClick={() => handleReview('认识')} 
                   disabled={isSubmitting || !isInteractable} 
-                  variant="danger" 
-                  className={`${isMobile ? 'w-24 h-12 text-base' : 'w-32 h-14 text-lg'}`}
+                  variant="success" 
+                  className={`${isMobile ? 'w-[30%] h-10 text-sm' : 'w-32 h-14 text-lg'}`}
                 >
-                  不认识
+                  认识
                 </Button>
                 <Button 
                   onClick={() => handleReview('模糊')} 
                   disabled={isSubmitting || !isInteractable} 
                   variant="warning" 
-                  className={`${isMobile ? 'w-24 h-12 text-base' : 'w-32 h-14 text-lg'}`}
+                  className={`${isMobile ? 'w-[30%] h-10 text-sm' : 'w-32 h-14 text-lg'}`}
                 >
                   模糊
                 </Button>
                 <Button 
-                  onClick={() => handleReview('认识')} 
+                  onClick={() => handleReview('不认识')} 
                   disabled={isSubmitting || !isInteractable} 
-                  variant="success" 
-                  className={`${isMobile ? 'w-24 h-12 text-base' : 'w-32 h-14 text-lg'}`}
+                  variant="danger" 
+                  className={`${isMobile ? 'w-[30%] h-10 text-sm' : 'w-32 h-14 text-lg'}`}
                 >
-                  认识
+                  不认识
                 </Button>
               </div>
             </div>
@@ -452,8 +470,8 @@ const LearnPage = () => {
           
           {nextWordCard && (
             <div 
-              className={`absolute hidden sm:block bg-white/90 rounded-xl shadow-md p-6 w-72 transform rotate-8 -right-48 transition-all duration-300 ease-in-out hover:scale-105 hover:-translate-y-2 hover:shadow-lg animate-float ${getNextCardAnimationClass()}`}
-              style={{zIndex: 1}}
+              className={`absolute hidden sm:block bg-white/90 rounded-xl shadow-md p-6 w-72 transform rotate-8 ${isMobile ? 'translate-x-3/4 right-0' : '-right-48'} transition-all duration-300 ease-in-out hover:scale-105 hover:-translate-y-2 hover:shadow-lg animate-float ${getNextCardAnimationClass()}`}
+              style={{zIndex: isMobile ? 5 : 1, '--rotate': '8deg'}}
             >
               <div className="card-word text-center text-2xl font-bold text-gray-600">{nextWordCard.lemma}</div>
               <div className="text-sm text-center text-gray-500 mt-2 opacity-70">即将学习...</div>
@@ -465,9 +483,9 @@ const LearnPage = () => {
   };
 
   return (
-    <div className={`bg-[#F5F5F7] w-full min-h-screen flex items-center justify-center ${isMobile ? 'p-3' : 'p-8'} font-sans`}>
+    <div className={`bg-[#F5F5F7] w-full min-h-screen flex items-center justify-center ${isMobile ? 'p-2' : 'p-8'} font-sans app-container`}>
       <div className="w-full mx-auto">
-        <div className={`bg-white ${isMobile ? 'p-3' : 'p-4'} rounded-xl shadow-md ${isMobile ? 'mb-4' : 'mb-6'} max-w-5xl mx-auto`}>
+        <div className={`bg-white ${isMobile ? 'p-2' : 'p-4'} rounded-xl shadow-md ${isMobile ? 'mb-2' : 'mb-6'} max-w-5xl mx-auto`}>
           <ProgressBar completed={progress.completed} total={progress.total} />
         </div>
         {renderContent()}

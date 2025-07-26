@@ -46,14 +46,14 @@ const SwipeCard = ({
     preventDefaultTouchMove: true // 确保阻止默认滚动行为
   });
   
-  // 当手势变化时更新卡片样式
+  // 当手势变化时更新卡片样式 - 优化动画性能
   useEffect(() => {
     if (disabled) return;
     
     if (isSwiping && swipeDirection) {
       setIsDragging(true);
       
-      const progress = swipeProgress * 1.5; // 放大效果
+      const progress = swipeProgress * 1.2; // 减小倍率，提高流畅度
       
       if (swipeDirection === 'left') {
         setTransform({
@@ -99,15 +99,15 @@ const SwipeCard = ({
     
     switch (direction) {
       case 'left':
-        targetX = -1500;
+        targetX = -1000; // 减小移动距离提高性能
         targetRotate = -30;
         break;
       case 'right':
-        targetX = 1500;
+        targetX = 1000; // 减小移动距离提高性能
         targetRotate = 30;
         break;
       case 'up':
-        targetY = -1500;
+        targetY = -1000; // 减小移动距离提高性能
         break;
       default:
         break;
@@ -123,7 +123,7 @@ const SwipeCard = ({
     // 动画结束后执行回调
     setTimeout(() => {
       if (onComplete) onComplete();
-    }, 300);
+    }, 250); // 缩短动画时间
   };
   
   // 处理点击事件
@@ -144,13 +144,13 @@ const SwipeCard = ({
     switch (swipeDirection) {
       case 'left':
         return {
-          label: '不认识',
-          className: 'bg-red-500',
+          label: '认识',
+          className: 'bg-green-500',
         };
       case 'right':
         return {
-          label: '认识',
-          className: 'bg-green-500',
+          label: '不认识',
+          className: 'bg-red-500',
         };
       case 'up':
         return {
@@ -169,9 +169,12 @@ const SwipeCard = ({
       ref={cardRef}
       className={`relative select-none touch-manipulation swipe-card-container ${isDragging ? 'z-10' : 'z-0'} ${className}`}
       style={{
-        transform: `translate(${transform.translateX}px, ${transform.translateY}px) rotate(${transform.rotate}deg)`,
+        transform: `translate3d(${transform.translateX}px, ${transform.translateY}px, 0) rotate(${transform.rotate}deg)`,
         opacity: transform.opacity,
-        transition: isDragging ? 'none' : 'all 0.3s ease'
+        transition: isDragging ? 'none' : 'all 0.25s cubic-bezier(0.2, 0, 0.2, 1)',
+        willChange: 'transform, opacity',
+        WebkitBackfaceVisibility: 'hidden',
+        WebkitTransformStyle: 'preserve-3d'
       }}
       onClick={handleClick}
     >
@@ -179,28 +182,8 @@ const SwipeCard = ({
       
       {/* 滑动方向指示器 */}
       {indicator && (
-        <div className={`absolute top-3 right-3 ${indicator.className} text-white font-bold py-1.5 px-3 text-sm rounded-lg transform transition-opacity duration-200 ${swipeProgress > 0.3 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
+        <div className={`absolute top-3 right-3 ${indicator.className} text-white font-bold py-1.5 px-3 text-sm rounded-lg transform transition-opacity duration-150 ${swipeProgress > 0.3 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
           {indicator.label}
-        </div>
-      )}
-      
-      {/* 滑动提示 - 仅在非拖动状态显示 */}
-      {!isDragging && !disabled && (
-        <div className="absolute bottom-6 left-0 right-0 flex justify-center opacity-70">
-          <div className="bg-gray-800/80 text-white text-xs py-1.5 px-3 rounded-full flex items-center space-x-2">
-            <div className="flex flex-col items-center">
-              <span className="text-red-400">←</span>
-              <span className="text-xs">不认识</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-yellow-400">↑</span>
-              <span className="text-xs">模糊</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="text-green-400">→</span>
-              <span className="text-xs">认识</span>
-            </div>
-          </div>
         </div>
       )}
     </div>

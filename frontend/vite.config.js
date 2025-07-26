@@ -84,4 +84,26 @@ export default defineConfig({
       },
     },
   },
+  build: {
+    // 优化构建配置
+    target: 'es2015',
+    cssCodeSplit: true,
+    sourcemap: false, // 生产环境禁用sourcemap提高性能
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true, // 移除console语句
+        drop_debugger: true // 移除debugger语句
+      }
+    },
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // 拆分chunks以优化移动设备的加载速度
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['./src/components/Button.jsx', './src/components/Input.jsx', './src/components/Header.jsx'],
+        }
+      }
+    }
+  },
 })

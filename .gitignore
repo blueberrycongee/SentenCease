@@ -53,3 +53,4 @@ lerna-debug.log*
 # Remove database volumes
 .postgres-data/ 
 node_modules/
+Sentencease/
